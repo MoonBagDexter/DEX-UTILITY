@@ -13,8 +13,27 @@ export default function TokenFeed({ initialStatus = 'new' }) {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
+  const [search, setSearch] = useState('');
 
   const LIMIT = 500; // Load all tokens at once
+
+  // Filter tokens by search query (name, ticker, description, links)
+  const filteredTokens = tokens.filter(token => {
+    if (!search.trim()) return true;
+    const query = search.toLowerCase().trim();
+
+    const name = (token.name || '').toLowerCase();
+    const ticker = (token.ticker || '').toLowerCase();
+    const description = (token.description || '').toLowerCase();
+    const links = (token.links || [])
+      .map(l => (l.url || '').toLowerCase())
+      .join(' ');
+
+    return name.includes(query) ||
+           ticker.includes(query) ||
+           description.includes(query) ||
+           links.includes(query);
+  });
 
   const fetchTokens = useCallback(async (newOffset = 0, append = false) => {
     setIsLoading(true);
@@ -95,9 +114,19 @@ export default function TokenFeed({ initialStatus = 'new' }) {
         ))}
       </div>
 
+      <div className={styles.searchWrapper}>
+        <input
+          type="text"
+          placeholder="Search name, ticker, description, links..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className={styles.searchInput}
+        />
+      </div>
+
       <div className={styles.stats}>
         <span className={styles.count}>
-          {total} {total === 1 ? 'token' : 'tokens'}
+          {search ? `${filteredTokens.length} of ${total}` : total} {total === 1 ? 'token' : 'tokens'}
         </span>
         <button
           onClick={() => fetchTokens(0, false)}
@@ -117,9 +146,9 @@ export default function TokenFeed({ initialStatus = 'new' }) {
         </div>
       )}
 
-      {!isLoading && tokens.length === 0 && !error && (
+      {!isLoading && filteredTokens.length === 0 && !error && (
         <div className={styles.empty}>
-          No {status} tokens found
+          {search ? `No tokens matching "${search}"` : `No ${status} tokens found`}
         </div>
       )}
 
@@ -131,7 +160,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
             ))}
           </>
         )}
-        {tokens.map(token => (
+        {filteredTokens.map(token => (
           <TokenCard
             key={token.ca}
             token={token}
