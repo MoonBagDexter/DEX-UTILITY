@@ -88,21 +88,15 @@ export default function TokenCard({ token, onStatusChange }) {
         <span className={styles.age}>{formatAge(token.pair_created_at)}</span>
       </div>
 
-      {token.description && (
-        <p className={styles.description}>{token.description}</p>
-      )}
+      <p className={styles.description}>
+        {token.description || '\u00A0'}
+      </p>
 
       <div className={styles.stats}>
         <div className={styles.stat}>
           <span className={styles.statLabel}>MCap</span>
           <span className={styles.statValue}>
             {formatNumber(token.stats?.marketCap)}
-          </span>
-        </div>
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>Liq</span>
-          <span className={styles.statValue}>
-            {formatNumber(token.stats?.liquidity)}
           </span>
         </div>
         <div className={styles.stat}>
@@ -146,17 +140,10 @@ export default function TokenCard({ token, onStatusChange }) {
             </span>
           </div>
           <p className={styles.reasoning}>{analysis.reasoning}</p>
-          {analysis.redFlags?.length > 0 && (
-            <div className={styles.redFlags}>
-              {analysis.redFlags.map((flag, i) => (
-                <span key={i} className={styles.redFlag}>
-                  {flag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       )}
+
+      <div className={styles.spacer} />
 
       <div className={styles.actions}>
         <button
