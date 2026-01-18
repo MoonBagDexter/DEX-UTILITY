@@ -111,7 +111,14 @@ export default function TokenCard({ token, onStatusChange }) {
         <div className={styles.links}>
           {token.links.map((link, i) => {
             const isCommunity = link.url?.startsWith('https://x.com/i/communities');
-            const displayText = isCommunity ? `${link.type} (Community)` : link.type;
+            const isTweet = link.url?.includes('/status/');
+
+            let displayText = link.type;
+            if (isCommunity) {
+              displayText = `${link.type} (Community)`;
+            } else if (isTweet) {
+              displayText = `${link.type} (Tweet)`;
+            }
 
             return (
               <a
