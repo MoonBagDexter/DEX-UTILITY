@@ -14,7 +14,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
 
-  const LIMIT = 20;
+  const LIMIT = 500; // Load all tokens at once
 
   const fetchTokens = useCallback(async (newOffset = 0, append = false) => {
     setIsLoading(true);
@@ -140,17 +140,6 @@ export default function TokenFeed({ initialStatus = 'new' }) {
         ))}
       </div>
 
-      {hasMore && (
-        <div className={styles.loadMore}>
-          <button
-            onClick={handleLoadMore}
-            disabled={isLoading}
-            className={styles.loadMoreBtn}
-          >
-            {isLoading ? 'Loading...' : 'Load More'}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
