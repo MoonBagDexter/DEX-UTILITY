@@ -14,4 +14,4 @@ jobs:
         run: |
           curl -X GET "${{ secrets.VERCEL_URL }}/api/cron" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            --fail --silent --show-error
+            -L --fail --show-error
