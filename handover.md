@@ -1,7 +1,7 @@
 # Dex Utility Finder - Handover Document
 
 ## What This App Does
-Tracks new Solana tokens from DexScreener, lets you analyze them with AI (meme vs utility), and organize them into Keep/Delete lists. Only shows tokens from the last 72 hours.
+Tracks new Solana tokens (with DexScreener profiles) and lets you analyze them with AI (meme vs utility), and organize them into Keep/Delete lists. Only shows tokens from the last 72 hours.
 
 ---
 
@@ -10,7 +10,7 @@ Tracks new Solana tokens from DexScreener, lets you analyze them with AI (meme v
 - **Database:** Supabase (PostgreSQL)
 - **AI:** Claude 3.5 Haiku (cheapest model)
 - **Hosting:** Vercel
-- **Cron:** GitHub Actions (every 15 min)
+- **Cron:** GitHub Actions (every 5 min)
 
 ---
 
@@ -46,7 +46,8 @@ CRON_SECRET=my-super-secret-cron-key-12345
 │   ├── kept/page.js            # Kept tokens page
 │   ├── deleted/page.js         # Deleted tokens page
 │   └── api/
-│       ├── cron/route.js       # Fetches tokens from DexScreener
+│       ├── cron/route.js       # Fetches tokens (GitHub Actions)
+│       ├── refresh/route.js    # Fetches tokens (Fetch New button)
 │       ├── tokens/route.js     # GET tokens, PATCH status
 │       └── analyze/route.js    # AI analysis endpoint
 │
@@ -71,11 +72,19 @@ CRON_SECRET=my-super-secret-cron-key-12345
 
 ## How It Works
 
-### Token Collection (Cron)
-1. GitHub Actions runs every 15 minutes
+### Token Collection (Two Methods)
+
+**Automatic (Cron):**
+1. GitHub Actions runs every 5 minutes
 2. Calls `/api/cron` with auth header
-3. Fetches latest Solana tokens from DexScreener API
-4. Saves new tokens to Supabase (skips existing ones)
+3. Fetches latest Solana tokens with profiles from DexScreener
+4. Saves new tokens to Supabase (skips duplicates)
+
+**Manual (Fetch New Button):**
+1. User clicks "🔍 Fetch New" button on the site
+2. Calls `/api/refresh` (no auth, 1-min rate limit)
+3. Same logic as cron - fetches from DexScreener
+4. Shows result: "Added X new tokens" or "All tokens already exist"
 
 ### Token Display
 1. `/api/tokens` fetches from Supabase
@@ -161,10 +170,13 @@ File: `components/TokenFeed.js` - look for `filteredTokens`
 
 ## Manual Commands
 
-### Trigger token fetch manually
+### Trigger token fetch manually (via API)
 ```bash
 curl "https://dex-utility.vercel.app/api/cron" -H "Authorization: Bearer my-super-secret-cron-key-12345"
 ```
+
+### Trigger token fetch manually (via website)
+Click the "🔍 Fetch New" button on the site (has 1-min rate limit)
 
 ### Clear all tokens (run in Supabase SQL Editor)
 ```sql
@@ -212,6 +224,13 @@ Check ANTHROPIC_API_KEY in Vercel environment variables.
 
 ## Recent Updates
 
-### 2026-01-18
-- **Updated Cron Schedule**: Changed GitHub Actions workflow (`.github/workflows/cron.yml`) to run every 5 minutes (was 15 minutes) for faster token discovery.
+### 2026-01-18 (Session 2)
+- **Removed DEX Filter**: Now shows ALL Solana tokens with DexScreener profiles (previously filtered to pumpswap/meteora/pumpfun only)
+- **Added Fetch New Button**: Manual refresh button on the site that fetches tokens from DexScreener with 1-min rate limit (`/api/refresh`)
+- **Fixed Cron Not Running**: Added `-L` flag to curl in GitHub Actions to follow redirects (was getting stuck on redirect)
+- **Fixed Tokens Not Showing**: Updated 72-hour filter to include tokens with null `pair_created_at` (falls back to `created_at`)
+- **Fixed "Unknown" Token Names**: Now pulls token name/ticker from pair data instead of profiles API (more reliable)
+
+### 2026-01-18 (Session 1)
+- **Updated Cron Schedule**: Changed GitHub Actions workflow to run every 5 minutes (was 15 minutes)
 
