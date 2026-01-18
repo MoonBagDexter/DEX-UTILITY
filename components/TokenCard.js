@@ -110,12 +110,22 @@ export default function TokenCard({ token, onStatusChange }) {
       {token.links && token.links.length > 0 && (
         <div className={styles.links}>
           {token.links.map((link, i) => {
-            const isCommunity = link.url?.startsWith('https://x.com/i/communities');
-            const isTweet = link.url?.includes('/status/');
+            const url = link.url || '';
+            const isCommunity = url.startsWith('https://x.com/i/communities');
+            const isTweet = url.includes('/status/');
+            const isSpace = url.startsWith('https://x.com/i/spaces');
+            const isSearch = url.includes('x.com/search');
+            const isArticle = url.includes('/article/');
 
             let displayText = link.type;
             if (isCommunity) {
               displayText = `${link.type} (Community)`;
+            } else if (isSpace) {
+              displayText = `${link.type} (Space)`;
+            } else if (isSearch) {
+              displayText = `${link.type} (Search)`;
+            } else if (isArticle) {
+              displayText = `${link.type} (Article)`;
             } else if (isTweet) {
               displayText = `${link.type} (Tweet)`;
             }
