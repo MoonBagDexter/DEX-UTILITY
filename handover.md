@@ -207,3 +207,11 @@ Check ANTHROPIC_API_KEY in Vercel environment variables.
 1. Check 72-hour filter isn't filtering everything
 2. Run manual curl to fetch tokens
 3. Check Supabase has data: `SELECT * FROM tokens;`
+
+---
+
+## Recent Updates
+
+### 2026-01-18
+- **Updated Cron Schedule**: Changed GitHub Actions workflow (`.github/workflows/cron.yml`) to run every 5 minutes (was 15 minutes) for faster token discovery.
+
