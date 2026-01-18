@@ -28,9 +28,9 @@ export async function GET(request) {
       query = query.eq('status', status);
     }
 
-    // Only show tokens from the last 72 hours
+    // Only show tokens from the last 72 hours (by pair_created_at OR created_at if pair date is null)
     const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
-    query = query.gte('pair_created_at', seventyTwoHoursAgo);
+    query = query.or(`pair_created_at.gte.${seventyTwoHoursAgo},and(pair_created_at.is.null,created_at.gte.${seventyTwoHoursAgo})`);
 
     // Apply sorting and pagination
     query = query
