@@ -6,7 +6,11 @@
       "Bash(npm run lint)",
       "Bash(npm run build:*)",
       "Bash(git add:*)",
-      "Bash(dir /b)"
+      "Bash(dir /b)",
+      "Bash(git commit:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)"
     ]
   }
 }

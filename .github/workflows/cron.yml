@@ -1,0 +1,17 @@
+name: Fetch New Tokens
+
+on:
+  schedule:
+    # Runs every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  fetch-tokens:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Cron API
+        run: |
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/cron" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --fail --silent --show-error
