@@ -89,10 +89,35 @@ export async function GET(request) {
     for (const token of newSolanaTokens) {
       // Build links array from available social links
       const links = [];
+
+      // Check for website fields
+      if (token.website) {
+        links.push({ type: 'website', url: token.website });
+      }
+      if (token.websites && Array.isArray(token.websites)) {
+        for (const site of token.websites) {
+          links.push({ type: 'website', url: typeof site === 'string' ? site : site.url });
+        }
+      }
+
+      // Check for social links
       if (token.links) {
         for (const link of token.links) {
           if (link.type && link.url) {
             links.push({ type: link.type, url: link.url });
+          } else if (link.label && link.url) {
+            links.push({ type: link.label, url: link.url });
+          } else if (typeof link === 'string') {
+            links.push({ type: 'link', url: link });
+          }
+        }
+      }
+
+      // Check socials object
+      if (token.socials) {
+        for (const social of token.socials) {
+          if (social.type && social.url) {
+            links.push({ type: social.type, url: social.url });
           }
         }
       }
