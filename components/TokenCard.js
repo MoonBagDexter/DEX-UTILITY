@@ -109,17 +109,22 @@ export default function TokenCard({ token, onStatusChange }) {
 
       {token.links && token.links.length > 0 && (
         <div className={styles.links}>
-          {token.links.map((link, i) => (
-            <a
-              key={i}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.link}
-            >
-              {link.type}
-            </a>
-          ))}
+          {token.links.map((link, i) => {
+            const isCommunity = link.url?.startsWith('https://x.com/i/communities');
+            const displayText = isCommunity ? `${link.type} (Community)` : link.type;
+
+            return (
+              <a
+                key={i}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.link}
+              >
+                {displayText}
+              </a>
+            );
+          })}
         </div>
       )}
 
