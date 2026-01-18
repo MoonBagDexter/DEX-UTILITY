@@ -3,9 +3,6 @@ import { NextResponse } from 'next/server';
 
 const DEXSCREENER_API = 'https://api.dexscreener.com';
 
-// Allowed DEX IDs - pumpswap and bagsapp (meteora variants)
-const ALLOWED_DEX_IDS = ['pumpswap', 'meteoradbc', 'meteora', 'pumpfun'];
-
 export async function GET(request) {
   // Verify cron secret
   const authHeader = request.headers.get('authorization');
@@ -57,7 +54,6 @@ export async function GET(request) {
     }
 
     // Fetch market stats for new tokens (batch in groups of 30)
-    // Also filter by allowed DEX IDs
     const tokenStats = new Map();
     const batchSize = 30;
 
@@ -69,12 +65,8 @@ export async function GET(request) {
         const statsRes = await fetch(`${DEXSCREENER_API}/tokens/v1/solana/${addresses}`);
         if (statsRes.ok) {
           const pairs = await statsRes.json();
-          // Group by token address, take the first pair that matches allowed DEXes
+          // Group by token address, take the first pair (usually highest liquidity)
           for (const pair of pairs) {
-            // Skip if not on an allowed DEX
-            if (!ALLOWED_DEX_IDS.includes(pair.dexId)) {
-              continue;
-            }
             if (!tokenStats.has(pair.baseToken.address)) {
               tokenStats.set(pair.baseToken.address, {
                 priceUsd: pair.priceUsd,
@@ -95,23 +87,10 @@ export async function GET(request) {
       }
     }
 
-    // Filter newSolanaTokens to only include those on allowed DEXes
-    const filteredTokens = newSolanaTokens.filter(t => tokenStats.has(t.tokenAddress));
-
-    // Check if any tokens passed the DEX filter
-    if (filteredTokens.length === 0) {
-      return NextResponse.json({
-        message: 'No tokens found on allowed DEXes (pumpswap, meteora, pumpfun)',
-        added: 0,
-        skipped: newSolanaTokens.length,
-        allowedDexes: ALLOWED_DEX_IDS
-      });
-    }
-
     // Prepare new tokens for insertion
     const newTokens = [];
 
-    for (const token of filteredTokens) {
+    for (const token of newSolanaTokens) {
       // Build links array from available social links
       const links = [];
 
@@ -180,9 +159,7 @@ export async function GET(request) {
     return NextResponse.json({
       message: 'Tokens collected successfully',
       added: newTokens.length,
-      filteredOut: newSolanaTokens.length - filteredTokens.length,
-      alreadyExisted: solanaTokens.length - newSolanaTokens.length,
-      allowedDexes: ALLOWED_DEX_IDS
+      alreadyExisted: solanaTokens.length - newSolanaTokens.length
     });
 
   } catch (error) {

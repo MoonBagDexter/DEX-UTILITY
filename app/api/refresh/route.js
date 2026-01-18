@@ -3,9 +3,6 @@ import { NextResponse } from 'next/server';
 
 const DEXSCREENER_API = 'https://api.dexscreener.com';
 
-// Allowed DEX IDs - pumpswap and bagsapp (meteora variants)
-const ALLOWED_DEX_IDS = ['pumpswap', 'meteoradbc', 'meteora', 'pumpfun'];
-
 // Simple in-memory rate limiting (resets on deploy)
 let lastRefreshTime = 0;
 const RATE_LIMIT_MS = 60000; // 1 minute between refreshes
@@ -76,9 +73,6 @@ export async function POST(request) {
         if (statsRes.ok) {
           const pairs = await statsRes.json();
           for (const pair of pairs) {
-            if (!ALLOWED_DEX_IDS.includes(pair.dexId)) {
-              continue;
-            }
             if (!tokenStats.has(pair.baseToken.address)) {
               tokenStats.set(pair.baseToken.address, {
                 priceUsd: pair.priceUsd,
@@ -98,21 +92,10 @@ export async function POST(request) {
       }
     }
 
-    // Filter to only tokens on allowed DEXes
-    const filteredTokens = newSolanaTokens.filter(t => tokenStats.has(t.tokenAddress));
-
-    if (filteredTokens.length === 0) {
-      return NextResponse.json({
-        message: 'No new tokens found on allowed DEXes',
-        added: 0,
-        skipped: newSolanaTokens.length
-      });
-    }
-
     // Prepare new tokens for insertion
     const newTokens = [];
 
-    for (const token of filteredTokens) {
+    for (const token of newSolanaTokens) {
       const links = [];
 
       if (token.website) {
@@ -174,8 +157,7 @@ export async function POST(request) {
 
     return NextResponse.json({
       message: 'Tokens refreshed successfully',
-      added: newTokens.length,
-      filteredOut: newSolanaTokens.length - filteredTokens.length
+      added: newTokens.length
     });
 
   } catch (error) {
