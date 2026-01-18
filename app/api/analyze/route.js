@@ -21,23 +21,17 @@ export async function POST(request) {
     const tokenContext = buildTokenContext(token);
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 256,
       messages: [
         {
           role: 'user',
-          content: `Analyze this Solana token and determine if it's a UTILITY token or a MEME coin.
+          content: `Is this a MEME coin or does it have real UTILITY? Analyze:
 
 ${tokenContext}
 
-Respond with a JSON object containing:
-- "classification": either "utility" or "meme"
-- "confidence": a number from 0-100 indicating your confidence
-- "reasoning": a brief 1-2 sentence explanation
-- "redFlags": an array of any concerning patterns (empty array if none)
-- "utilityScore": a number from 0-100 (100 = pure utility, 0 = pure meme)
-
-Only respond with the JSON object, no other text.`
+Reply with JSON only:
+{"classification":"utility" or "meme","confidence":0-100,"reasoning":"1 sentence"}`
         }
       ]
     });
@@ -47,15 +41,14 @@ Only respond with the JSON object, no other text.`
     let analysis;
 
     try {
-      analysis = JSON.parse(responseText);
+      // Extract JSON from response (in case there's extra text)
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(responseText);
     } catch {
-      // If parsing fails, return a default structure
       analysis = {
         classification: 'unknown',
         confidence: 0,
-        reasoning: 'Failed to parse AI response',
-        redFlags: ['Analysis parsing error'],
-        utilityScore: 50
+        reasoning: 'Failed to parse AI response'
       };
     }
 
