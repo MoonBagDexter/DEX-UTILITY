@@ -82,7 +82,10 @@ export async function GET(request) {
                 volume24h: pair.volume?.h24,
                 liquidity: pair.liquidity?.usd,
                 pairCreatedAt: pair.pairCreatedAt,
-                dexId: pair.dexId
+                dexId: pair.dexId,
+                // Get name and symbol from pair data as reliable source
+                name: pair.baseToken.name,
+                symbol: pair.baseToken.symbol
               });
             }
           }
@@ -148,12 +151,12 @@ export async function GET(request) {
 
       newTokens.push({
         ca: token.tokenAddress,
-        name: token.description ? extractName(token.description) : 'Unknown',
-        ticker: token.symbol || 'UNKNOWN',
+        name: stats.name || (token.description ? extractName(token.description) : 'Unknown'),
+        ticker: stats.symbol || token.symbol || 'UNKNOWN',
         description: token.description || null,
         image_url: token.icon || null,
         links: links,
-        dex_id: token.url ? extractDexId(token.url) : null,
+        dex_id: stats.dexId || (token.url ? extractDexId(token.url) : null),
         pair_created_at: stats.pairCreatedAt ? new Date(stats.pairCreatedAt).toISOString() : null,
         status: 'new',
         stats: {
