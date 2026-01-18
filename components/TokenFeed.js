@@ -1,0 +1,156 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import TokenCard from './TokenCard';
+import TokenCardSkeleton from './TokenCardSkeleton';
+import styles from './TokenFeed.module.css';
+
+export default function TokenFeed({ initialStatus = 'new' }) {
+  const [tokens, setTokens] = useState([]);
+  const [status, setStatus] = useState(initialStatus);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+
+  const LIMIT = 20;
+
+  const fetchTokens = useCallback(async (newOffset = 0, append = false) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        status,
+        limit: LIMIT.toString(),
+        offset: newOffset.toString(),
+        sortBy: 'pair_created_at',
+        sortOrder: 'desc',
+      });
+
+      const res = await fetch(`/api/tokens?${params}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to fetch tokens');
+      }
+
+      if (append) {
+        setTokens(prev => [...prev, ...data.tokens]);
+      } else {
+        setTokens(data.tokens);
+      }
+
+      setTotal(data.total);
+      setHasMore(data.hasMore);
+      setOffset(newOffset);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [status]);
+
+  useEffect(() => {
+    fetchTokens(0, false);
+  }, [fetchTokens]);
+
+  const handleStatusChange = (ca, newStatus) => {
+    // Remove the token from current view if status changed
+    setTokens(prev => prev.filter(t => t.ca !== ca));
+    setTotal(prev => prev - 1);
+  };
+
+  const handleLoadMore = () => {
+    if (!isLoading && hasMore) {
+      fetchTokens(offset + LIMIT, true);
+    }
+  };
+
+  const handleTabChange = (newStatus) => {
+    if (newStatus !== status) {
+      setStatus(newStatus);
+      setOffset(0);
+    }
+  };
+
+  const tabs = [
+    { id: 'new', label: 'New' },
+    { id: 'kept', label: 'Kept' },
+    { id: 'deleted', label: 'Deleted' },
+  ];
+
+  return (
+    <div className={styles.feed}>
+      <div className={styles.tabs}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => handleTabChange(tab.id)}
+            className={`${styles.tab} ${status === tab.id ? styles.tabActive : ''}`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className={styles.stats}>
+        <span className={styles.count}>
+          {total} {total === 1 ? 'token' : 'tokens'}
+        </span>
+        <button
+          onClick={() => fetchTokens(0, false)}
+          disabled={isLoading}
+          className={styles.refreshBtn}
+        >
+          {isLoading ? 'Loading...' : 'Refresh'}
+        </button>
+      </div>
+
+      {error && (
+        <div className={styles.error}>
+          {error}
+          <button onClick={() => fetchTokens(0, false)} className={styles.retryBtn}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {!isLoading && tokens.length === 0 && !error && (
+        <div className={styles.empty}>
+          No {status} tokens found
+        </div>
+      )}
+
+      <div className={styles.grid}>
+        {isLoading && tokens.length === 0 && (
+          <>
+            {[...Array(6)].map((_, i) => (
+              <TokenCardSkeleton key={i} />
+            ))}
+          </>
+        )}
+        {tokens.map(token => (
+          <TokenCard
+            key={token.ca}
+            token={token}
+            onStatusChange={handleStatusChange}
+          />
+        ))}
+      </div>
+
+      {hasMore && (
+        <div className={styles.loadMore}>
+          <button
+            onClick={handleLoadMore}
+            disabled={isLoading}
+            className={styles.loadMoreBtn}
+          >
+            {isLoading ? 'Loading...' : 'Load More'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,254 @@
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  border-color: var(--foreground-muted);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.image {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+}
+
+.imagePlaceholder {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--background-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--foreground-muted);
+}
+
+.titleGroup {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticker {
+  font-size: var(--font-size-sm);
+  color: var(--foreground-muted);
+}
+
+.age {
+  font-size: var(--font-size-xs);
+  color: var(--foreground-muted);
+  white-space: nowrap;
+}
+
+.description {
+  font-size: var(--font-size-sm);
+  color: var(--foreground-muted);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stats {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: var(--font-size-xs);
+  color: var(--foreground-muted);
+  text-transform: uppercase;
+}
+
+.statValue {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.link {
+  font-size: var(--font-size-xs);
+  padding: 4px 8px;
+  background: var(--background-secondary);
+  border-radius: var(--radius-sm);
+  color: var(--foreground-muted);
+  text-transform: capitalize;
+}
+
+.link:hover {
+  background: var(--card-border);
+  color: var(--foreground);
+}
+
+.analysis {
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  background: var(--background-secondary);
+  border-left: 3px solid var(--foreground-muted);
+}
+
+.analysisUtility {
+  border-left-color: var(--success);
+}
+
+.analysisMeme {
+  border-left-color: var(--warning);
+}
+
+.analysisHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+.classification {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.analysisUtility .classification {
+  color: var(--success);
+}
+
+.analysisMeme .classification {
+  color: var(--warning);
+}
+
+.confidence {
+  font-size: var(--font-size-xs);
+  color: var(--foreground-muted);
+}
+
+.reasoning {
+  font-size: var(--font-size-sm);
+  color: var(--foreground-muted);
+  line-height: 1.4;
+}
+
+.redFlags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+}
+
+.redFlag {
+  font-size: var(--font-size-xs);
+  padding: 2px 6px;
+  background: rgba(255, 71, 87, 0.15);
+  color: var(--danger);
+  border-radius: var(--radius-sm);
+}
+
+.actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: space-between;
+}
+
+.actionGroup {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.analyzeBtn,
+.keepBtn,
+.deleteBtn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.analyzeBtn {
+  background: var(--background-secondary);
+  color: var(--foreground);
+  border: 1px solid var(--card-border);
+}
+
+.analyzeBtn:hover:not(:disabled) {
+  background: var(--card-border);
+}
+
+.analyzeBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.keepBtn {
+  background: var(--success);
+  color: #000;
+}
+
+.keepBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.keepBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.deleteBtn {
+  background: var(--danger);
+  color: #fff;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: var(--danger-hover);
+}
+
+.deleteBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dexLink {
+  font-size: var(--font-size-xs);
+  text-align: center;
+  color: var(--foreground-muted);
+  padding-top: var(--spacing-xs);
+  border-top: 1px solid var(--card-border);
+}
+
+.dexLink:hover {
+  color: var(--primary-accent);
+}
