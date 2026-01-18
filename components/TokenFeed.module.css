@@ -84,6 +84,48 @@
   cursor: not-allowed;
 }
 
+.buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.fetchBtn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  background: var(--primary-accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.fetchBtn:hover:not(:disabled) {
+  background: var(--primary-accent-hover);
+}
+
+.fetchBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.message {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.message.success {
+  background: rgba(46, 213, 115, 0.1);
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+.message.error {
+  background: rgba(255, 71, 87, 0.1);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
 .error {
   display: flex;
   align-items: center;

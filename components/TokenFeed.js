@@ -14,6 +14,8 @@ export default function TokenFeed({ initialStatus = 'new' }) {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState(null);
 
   const LIMIT = 500; // Load all tokens at once
 
@@ -94,6 +96,37 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     }
   };
 
+  const handleFetchNew = async () => {
+    setIsRefreshing(true);
+    setRefreshMessage(null);
+
+    try {
+      const res = await fetch('/api/refresh', { method: 'POST' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setRefreshMessage({ type: 'error', text: data.error });
+      } else {
+        setRefreshMessage({
+          type: 'success',
+          text: data.added > 0
+            ? `Added ${data.added} new token${data.added !== 1 ? 's' : ''}`
+            : data.message
+        });
+        // Reload the token list if new tokens were added
+        if (data.added > 0) {
+          fetchTokens(0, false);
+        }
+      }
+    } catch (err) {
+      setRefreshMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsRefreshing(false);
+      // Clear message after 5 seconds
+      setTimeout(() => setRefreshMessage(null), 5000);
+    }
+  };
+
   const tabs = [
     { id: 'new', label: 'New' },
     { id: 'kept', label: 'Kept' },
@@ -128,14 +161,29 @@ export default function TokenFeed({ initialStatus = 'new' }) {
         <span className={styles.count}>
           {search ? `${filteredTokens.length} of ${total}` : total} {total === 1 ? 'token' : 'tokens'}
         </span>
-        <button
-          onClick={() => fetchTokens(0, false)}
-          disabled={isLoading}
-          className={styles.refreshBtn}
-        >
-          {isLoading ? 'Loading...' : 'Refresh'}
-        </button>
+        <div className={styles.buttons}>
+          <button
+            onClick={handleFetchNew}
+            disabled={isRefreshing}
+            className={styles.fetchBtn}
+          >
+            {isRefreshing ? 'Fetching...' : 'Fetch New'}
+          </button>
+          <button
+            onClick={() => fetchTokens(0, false)}
+            disabled={isLoading}
+            className={styles.refreshBtn}
+          >
+            {isLoading ? 'Loading...' : 'Refresh'}
+          </button>
+        </div>
       </div>
+
+      {refreshMessage && (
+        <div className={`${styles.message} ${styles[refreshMessage.type]}`}>
+          {refreshMessage.text}
+        </div>
+      )}
 
       {error && (
         <div className={styles.error}>
