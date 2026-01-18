@@ -28,6 +28,10 @@ export async function GET(request) {
       query = query.eq('status', status);
     }
 
+    // Only show tokens from the last 72 hours
+    const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+    query = query.gte('pair_created_at', seventyTwoHoursAgo);
+
     // Apply sorting and pagination
     query = query
       .order(safeSort, { ascending: safeOrder })
