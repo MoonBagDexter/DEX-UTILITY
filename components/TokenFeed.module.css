@@ -107,6 +107,15 @@
   cursor: not-allowed;
 }
 
+.fetchBtn.fetching {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
 .message {
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-md);

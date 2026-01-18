@@ -165,9 +165,9 @@ export default function TokenFeed({ initialStatus = 'new' }) {
           <button
             onClick={handleFetchNew}
             disabled={isRefreshing}
-            className={styles.fetchBtn}
+            className={`${styles.fetchBtn} ${isRefreshing ? styles.fetching : ''}`}
           >
-            {isRefreshing ? 'Fetching...' : 'Fetch New'}
+            {isRefreshing ? '⏳ Fetching from DexScreener...' : '🔍 Fetch New'}
           </button>
           <button
             onClick={() => fetchTokens(0, false)}
@@ -181,7 +181,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
 
       {refreshMessage && (
         <div className={`${styles.message} ${styles[refreshMessage.type]}`}>
-          {refreshMessage.text}
+          {refreshMessage.type === 'success' ? '✅ ' : '❌ '}{refreshMessage.text}
         </div>
       )}
 
