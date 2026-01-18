@@ -182,14 +182,14 @@ export default function TokenCard({ token, onStatusChange }) {
         </div>
       </div>
 
-      {token.dex_id && (
+      {token.ca && (
         <a
-          href={`https://dexscreener.com/solana/${token.dex_id}`}
+          href={`https://axiom.trade/t/${token.ca}`}
           target="_blank"
           rel="noopener noreferrer"
           className={styles.dexLink}
         >
-          View on DexScreener
+          Open in Axiom
         </a>
       )}
     </div>
