@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { supabaseServerServer } from '@/lib/supabaseServer-server';
+import { supabaseServer } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 const DEXSCREENER_API = 'https://api.dexscreener.com';
