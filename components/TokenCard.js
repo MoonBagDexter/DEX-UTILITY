@@ -70,6 +70,11 @@ export default function TokenCard({ token, onStatusChange }) {
     if (dexId === 'pumpfun' || dexId === 'pump') return 'pumpfun';
     if (dexId === 'bags' || dexId === 'letsbag') return 'bags';
 
+    // Fallback: check CA suffix
+    const ca = token.ca?.toLowerCase();
+    if (ca?.endsWith('pump')) return 'pumpfun';
+    if (ca?.endsWith('bags')) return 'bags';
+
     // Fallback: check links for Bags
     if (token.links?.some(link =>
       link.url?.toLowerCase().includes('bags.fm')
