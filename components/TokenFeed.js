@@ -190,24 +190,56 @@ export default function TokenFeed({ initialStatus = 'new' }) {
 
       if (!res.ok) {
         setRefreshMessage({ type: 'error', text: data.error });
-      } else {
+        setIsRefreshing(false);
+        setTimeout(() => setRefreshMessage(null), 5000);
+        return;
+      }
+
+      const added = data.added || 0;
+      if (added === 0) {
+        setRefreshMessage({ type: 'success', text: data.message || 'No new tokens found' });
+        setIsRefreshing(false);
+        setTimeout(() => setRefreshMessage(null), 5000);
+        return;
+      }
+
+      // Tokens were added - now auto-analyze them in batches
+      setRefreshMessage({ type: 'success', text: `Added ${added} tokens. Analyzing...` });
+
+      let totalKept = 0, totalDeleted = 0, totalProcessed = 0;
+
+      // Keep analyzing until no more new tokens
+      while (true) {
+        const analyzeRes = await fetch('/api/auto-analyze', { method: 'POST' });
+        const analyzeData = await analyzeRes.json();
+
+        if (!analyzeRes.ok || !analyzeData.total || analyzeData.total === 0) {
+          break; // No more tokens to analyze
+        }
+
+        totalKept += analyzeData.kept || 0;
+        totalDeleted += analyzeData.deleted || 0;
+        totalProcessed += analyzeData.total || 0;
+
         setRefreshMessage({
           type: 'success',
-          text: data.added > 0
-            ? `Added ${data.added} new token${data.added !== 1 ? 's' : ''}`
-            : data.message
+          text: `Analyzing... ${totalProcessed} done (${totalKept} kept, ${totalDeleted} deleted)`
         });
-        // Reload the token list if new tokens were added
-        if (data.added > 0) {
-          fetchTokens(0, false);
-        }
       }
+
+      setRefreshMessage({
+        type: 'success',
+        text: `Done! Added ${added}, analyzed ${totalProcessed}: ${totalKept} kept, ${totalDeleted} deleted`
+      });
+
+      // Reload the token list
+      fetchTokens(0, false);
+
     } catch (err) {
       setRefreshMessage({ type: 'error', text: err.message });
     } finally {
       setIsRefreshing(false);
-      // Clear message after 5 seconds
-      setTimeout(() => setRefreshMessage(null), 5000);
+      setTimeout(() => setRefreshMessage(null), 8000);
     }
   };
 
