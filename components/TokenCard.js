@@ -69,12 +69,13 @@ export default function TokenCard({ token, onStatusChange }) {
 
     if (dexId === 'pumpfun' || dexId === 'pump') return 'pumpfun';
     if (dexId === 'bags' || dexId === 'letsbag') return 'bags';
-    if (dexId === 'bonk' || dexId === 'bonkfun' || dexId === 'letsbonk') return 'bonk';
+    if (dexId === 'launchlab' || dexId === 'bonk' || dexId === 'bonkfun' || dexId === 'letsbonk') return 'bonk';
 
     // Fallback: check CA suffix
     const ca = token.ca?.toLowerCase();
     if (ca?.endsWith('pump')) return 'pumpfun';
     if (ca?.endsWith('bags')) return 'bags';
+    if (ca?.endsWith('bonk')) return 'bonk';
 
     // Fallback: check links
     if (token.links?.some(link =>
