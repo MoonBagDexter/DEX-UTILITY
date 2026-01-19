@@ -89,6 +89,24 @@
   gap: var(--spacing-sm);
 }
 
+.exportBtn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  background: var(--success);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.exportBtn:hover:not(:disabled) {
+  background: #27ae60;
+}
+
+.exportBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .fetchBtn {
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--font-size-sm);

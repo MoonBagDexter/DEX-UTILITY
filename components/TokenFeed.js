@@ -96,6 +96,95 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     }
   };
 
+  const handleExportKept = () => {
+    // Get tokens to export (use filtered if search is active, otherwise all)
+    const tokensToExport = search.trim() ? filteredTokens : tokens;
+
+    if (tokensToExport.length === 0) {
+      setRefreshMessage({ type: 'error', text: 'No tokens to export' });
+      setTimeout(() => setRefreshMessage(null), 3000);
+      return;
+    }
+
+    // Generate timestamp for filename
+    const now = new Date();
+    const timestamp = now.toISOString()
+      .replace(/[:.]/g, '-')
+      .replace('T', '_')
+      .slice(0, 19);
+    const filename = `kept_coins_${timestamp}.txt`;
+
+    // Build file content
+    let content = `Kept Coins Export\n`;
+    content += `Exported: ${now.toLocaleString()}\n`;
+    content += `Total: ${tokensToExport.length} coins\n`;
+    content += `${'='.repeat(60)}\n\n`;
+
+    tokensToExport.forEach((token, index) => {
+      content += `${index + 1}. ${token.name || 'Unknown'} (${token.ticker || 'N/A'})\n`;
+      content += `${'-'.repeat(40)}\n`;
+
+      // Contract Address
+      content += `CA: ${token.ca}\n`;
+
+      // Description
+      if (token.description) {
+        content += `Description: ${token.description}\n`;
+      }
+
+      // Websites
+      const websites = (token.links || []).filter(l =>
+        l.type === 'website' || l.type === 'Website'
+      );
+      if (websites.length > 0) {
+        content += `Websites:\n`;
+        websites.forEach(w => content += `  - ${w.url}\n`);
+      }
+
+      // X/Twitter links
+      const xLinks = (token.links || []).filter(l =>
+        l.type?.toLowerCase() === 'twitter' ||
+        l.type?.toLowerCase() === 'x' ||
+        (l.url && l.url.includes('x.com')) ||
+        (l.url && l.url.includes('twitter.com'))
+      );
+      if (xLinks.length > 0) {
+        content += `X Links:\n`;
+        xLinks.forEach(x => content += `  - ${x.url}\n`);
+      }
+
+      // Other links
+      const otherLinks = (token.links || []).filter(l => {
+        const type = l.type?.toLowerCase() || '';
+        const url = l.url || '';
+        const isWebsite = type === 'website';
+        const isX = type === 'twitter' || type === 'x' ||
+                    url.includes('x.com') || url.includes('twitter.com');
+        return !isWebsite && !isX;
+      });
+      if (otherLinks.length > 0) {
+        content += `Other Links:\n`;
+        otherLinks.forEach(l => content += `  - [${l.type || 'link'}] ${l.url}\n`);
+      }
+
+      content += `\n`;
+    });
+
+    // Create and download file
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setRefreshMessage({ type: 'success', text: `Exported ${tokensToExport.length} coins to ${filename}` });
+    setTimeout(() => setRefreshMessage(null), 5000);
+  };
+
   const handleFetchNew = async () => {
     setIsRefreshing(true);
     setRefreshMessage(null);
@@ -162,6 +251,15 @@ export default function TokenFeed({ initialStatus = 'new' }) {
           {search ? `${filteredTokens.length} of ${total}` : total} {total === 1 ? 'token' : 'tokens'}
         </span>
         <div className={styles.buttons}>
+          {status === 'kept' && (
+            <button
+              onClick={handleExportKept}
+              disabled={tokens.length === 0}
+              className={styles.exportBtn}
+            >
+              Export Kept
+            </button>
+          )}
           <button
             onClick={handleFetchNew}
             disabled={isRefreshing}
