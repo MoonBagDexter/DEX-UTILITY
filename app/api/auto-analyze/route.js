@@ -8,9 +8,10 @@ const anthropic = new Anthropic({
 
 export async function POST(request) {
   try {
-    // Optional: limit number of tokens to process
+    // Process only 5 tokens at a time to avoid Vercel timeout (10s hobby, 60s pro)
+    // User can click multiple times to process all tokens
     const body = await request.json().catch(() => ({}));
-    const limit = body.limit || 100;
+    const limit = body.limit || 5;
 
     // Fetch all tokens with status='new'
     const { data: newTokens, error: fetchError } = await supabase

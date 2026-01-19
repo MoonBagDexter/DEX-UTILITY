@@ -222,10 +222,12 @@ export default function TokenFeed({ initialStatus = 'new' }) {
       if (!res.ok) {
         setRefreshMessage({ type: 'error', text: data.error });
       } else {
-        const { kept = 0, deleted = 0, skipped = 0 } = data;
+        const { kept = 0, deleted = 0, skipped = 0, total = 0 } = data;
+        const remaining = tokens.length - total;
+        const remainingMsg = remaining > 0 ? ` (${remaining} remaining - click again)` : '';
         setRefreshMessage({
           type: 'success',
-          text: `Analyzed ${data.total || 0} tokens: ${kept} kept, ${deleted} deleted, ${skipped} skipped`
+          text: `Analyzed ${total} tokens: ${kept} kept, ${deleted} deleted, ${skipped} skipped${remainingMsg}`
         });
         // Reload the token list to reflect changes
         if (kept > 0 || deleted > 0) {
