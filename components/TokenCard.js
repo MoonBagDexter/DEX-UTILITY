@@ -64,23 +64,50 @@ export default function TokenCard({ token, onStatusChange }) {
     return `${days}d ago`;
   };
 
+  const getDexType = () => {
+    const dexId = token.dex_id?.toLowerCase();
+
+    if (dexId === 'pumpfun' || dexId === 'pump') return 'pumpfun';
+    if (dexId === 'bags' || dexId === 'letsbag') return 'bags';
+
+    // Fallback: check links for Bags
+    if (token.links?.some(link =>
+      link.url?.toLowerCase().includes('bags.fm')
+    )) return 'bags';
+
+    return null; // No badge (Raydium/unknown)
+  };
+
+  const dexType = getDexType();
+
   return (
     <div className={styles.card}>
       <div className={styles.header}>
-        {token.image_url ? (
-          <Image
-            src={token.image_url}
-            alt={token.name || 'Token'}
-            width={48}
-            height={48}
-            className={styles.image}
-            unoptimized
-          />
-        ) : (
-          <div className={styles.imagePlaceholder}>
-            {token.ticker?.charAt(0) || '?'}
-          </div>
-        )}
+        <div className={styles.imageContainer}>
+          {token.image_url ? (
+            <Image
+              src={token.image_url}
+              alt={token.name || 'Token'}
+              width={48}
+              height={48}
+              className={styles.image}
+              unoptimized
+            />
+          ) : (
+            <div className={styles.imagePlaceholder}>
+              {token.ticker?.charAt(0) || '?'}
+            </div>
+          )}
+          {dexType && (
+            <div className={styles.dexBadge}>
+              <img
+                src={`/icons/${dexType}.png`}
+                alt={dexType}
+                className={styles.dexBadgeIcon}
+              />
+            </div>
+          )}
+        </div>
         <div className={styles.titleGroup}>
           <h3 className={styles.name}>{token.name || 'Unknown'}</h3>
           <span className={styles.ticker}>${token.ticker || 'UNKNOWN'}</span>
