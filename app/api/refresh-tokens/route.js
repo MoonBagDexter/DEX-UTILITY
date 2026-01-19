@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseServerServer } from '@/lib/supabaseServer-server';
 import { NextResponse } from 'next/server';
 
 const DEXSCREENER_API = 'https://api.dexscreener.com';
@@ -26,7 +26,7 @@ export async function POST(request) {
     const limit = body.limit || 500;
 
     // Fetch tokens from database
-    let query = supabase
+    let query = supabaseServer
       .from('tokens')
       .select('ca')
       .limit(limit);
@@ -94,7 +94,7 @@ export async function POST(request) {
         for (const token of batch) {
           const data = tokenData.get(token.ca);
           if (data) {
-            const { error: updateError } = await supabase
+            const { error: updateError } = await supabaseServer
               .from('tokens')
               .update({
                 dex_id: data.dex_id,

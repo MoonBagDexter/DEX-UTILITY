@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from '@/lib/supabase';
+import { supabaseServerServer } from '@/lib/supabaseServer-server';
 import { NextResponse } from 'next/server';
 
 const anthropic = new Anthropic({
@@ -14,7 +14,7 @@ export async function POST(request) {
     const limit = body.limit || 5;
 
     // Fetch all tokens with status='new'
-    const { data: newTokens, error: fetchError } = await supabase
+    const { data: newTokens, error: fetchError } = await supabaseServer
       .from('tokens')
       .select('*')
       .eq('status', 'new')
@@ -64,7 +64,7 @@ export async function POST(request) {
         }
 
         // Update token status in database
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseServer
           .from('tokens')
           .update({
             status: newStatus,

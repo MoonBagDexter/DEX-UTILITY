@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabaseServerServer } from '@/lib/supabaseServer-server';
 import { NextResponse } from 'next/server';
 
 const DEXSCREENER_API = 'https://api.dexscreener.com';
@@ -42,7 +42,7 @@ export async function POST(request) {
 
     // Get existing CAs to avoid duplicates
     const cas = solanaTokens.map(t => t.tokenAddress);
-    const { data: existingTokens } = await supabase
+    const { data: existingTokens } = await supabaseServer
       .from('tokens')
       .select('ca')
       .in('ca', cas);
@@ -147,7 +147,7 @@ export async function POST(request) {
     }
 
     // Insert new tokens
-    const { error } = await supabase
+    const { error } = await supabaseServer
       .from('tokens')
       .insert(newTokens);
 

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { supabaseServer } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 // GET /api/tokens - Fetch tokens with filtering and pagination
@@ -90,8 +91,8 @@ export async function PATCH(request) {
       );
     }
 
-    // Update token status
-    const { data, error } = await supabase
+    // Update token status (use server client to bypass RLS)
+    const { data, error } = await supabaseServer
       .from('tokens')
       .update({ status })
       .eq('ca', ca)

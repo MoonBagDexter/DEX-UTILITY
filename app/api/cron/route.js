@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from '@/lib/supabase';
+import { supabaseServerServer } from '@/lib/supabaseServer-server';
 import { NextResponse } from 'next/server';
 
 const DEXSCREENER_API = 'https://api.dexscreener.com';
@@ -40,7 +40,7 @@ export async function GET(request) {
 
     // Get existing CAs to avoid duplicates
     const cas = solanaTokens.map(t => t.tokenAddress);
-    const { data: existingTokens } = await supabase
+    const { data: existingTokens } = await supabaseServer
       .from('tokens')
       .select('ca')
       .in('ca', cas);
@@ -153,7 +153,7 @@ export async function GET(request) {
     }
 
     // Insert new tokens
-    const { error } = await supabase
+    const { error } = await supabaseServer
       .from('tokens')
       .insert(newTokens);
 
@@ -223,7 +223,7 @@ async function autoAnalyzeTokens(tokens) {
         continue;
       }
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await supabaseServer
         .from('tokens')
         .update({
           status: newStatus,
