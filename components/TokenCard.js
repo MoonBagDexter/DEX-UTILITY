@@ -69,16 +69,22 @@ export default function TokenCard({ token, onStatusChange }) {
 
     if (dexId === 'pumpfun' || dexId === 'pump') return 'pumpfun';
     if (dexId === 'bags' || dexId === 'letsbag') return 'bags';
+    if (dexId === 'bonk' || dexId === 'bonkfun' || dexId === 'letsbonk') return 'bonk';
 
     // Fallback: check CA suffix
     const ca = token.ca?.toLowerCase();
     if (ca?.endsWith('pump')) return 'pumpfun';
     if (ca?.endsWith('bags')) return 'bags';
 
-    // Fallback: check links for Bags
+    // Fallback: check links
     if (token.links?.some(link =>
       link.url?.toLowerCase().includes('bags.fm')
     )) return 'bags';
+
+    if (token.links?.some(link =>
+      link.url?.toLowerCase().includes('bonk.fun') ||
+      link.url?.toLowerCase().includes('letsbonk')
+    )) return 'bonk';
 
     return null; // No badge (Raydium/unknown)
   };
