@@ -102,6 +102,28 @@
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+.analyzeBtn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  background: #9b59b6;
+  color: #fff;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.analyzeBtn:hover:not(:disabled) {
+  background: #8e44ad;
+}
+
+.analyzeBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.analyzeBtn.analyzing {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }

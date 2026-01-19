@@ -15,6 +15,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
   const [search, setSearch] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const LIMIT = 500; // Load all tokens at once
 
@@ -209,6 +210,35 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     }
   };
 
+  const handleAutoAnalyze = async () => {
+    setIsAnalyzing(true);
+    setRefreshMessage(null);
+
+    try {
+      const res = await fetch('/api/auto-analyze', { method: 'POST' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setRefreshMessage({ type: 'error', text: data.error });
+      } else {
+        const { kept = 0, deleted = 0, skipped = 0 } = data;
+        setRefreshMessage({
+          type: 'success',
+          text: `Analyzed ${data.total || 0} tokens: ${kept} kept, ${deleted} deleted, ${skipped} skipped`
+        });
+        // Reload the token list to reflect changes
+        if (kept > 0 || deleted > 0) {
+          fetchTokens(0, false);
+        }
+      }
+    } catch (err) {
+      setRefreshMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsAnalyzing(false);
+      setTimeout(() => setRefreshMessage(null), 5000);
+    }
+  };
+
   return (
     <div className={styles.feed}>
       <div className={styles.searchWrapper}>
@@ -233,6 +263,15 @@ export default function TokenFeed({ initialStatus = 'new' }) {
               className={styles.exportBtn}
             >
               Export Kept
+            </button>
+          )}
+          {initialStatus === 'new' && (
+            <button
+              onClick={handleAutoAnalyze}
+              disabled={isAnalyzing || tokens.length === 0}
+              className={`${styles.analyzeBtn} ${isAnalyzing ? styles.analyzing : ''}`}
+            >
+              {isAnalyzing ? '🤖 Analyzing...' : '🤖 Auto-Analyze All'}
             </button>
           )}
           <button
