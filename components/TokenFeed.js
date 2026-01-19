@@ -7,7 +7,6 @@ import styles from './TokenFeed.module.css';
 
 export default function TokenFeed({ initialStatus = 'new' }) {
   const [tokens, setTokens] = useState([]);
-  const [status, setStatus] = useState(initialStatus);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
@@ -43,7 +42,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
 
     try {
       const params = new URLSearchParams({
-        status,
+        status: initialStatus,
         limit: LIMIT.toString(),
         offset: newOffset.toString(),
         sortBy: 'pair_created_at',
@@ -71,7 +70,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     } finally {
       setIsLoading(false);
     }
-  }, [status]);
+  }, [initialStatus]);
 
   useEffect(() => {
     fetchTokens(0, false);
@@ -89,12 +88,6 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     }
   };
 
-  const handleTabChange = (newStatus) => {
-    if (newStatus !== status) {
-      setStatus(newStatus);
-      setOffset(0);
-    }
-  };
 
   const handleExportKept = () => {
     // Get tokens to export (use filtered if search is active, otherwise all)
@@ -216,26 +209,8 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     }
   };
 
-  const tabs = [
-    { id: 'new', label: 'New' },
-    { id: 'kept', label: 'Kept' },
-    { id: 'deleted', label: 'Deleted' },
-  ];
-
   return (
     <div className={styles.feed}>
-      <div className={styles.tabs}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => handleTabChange(tab.id)}
-            className={`${styles.tab} ${status === tab.id ? styles.tabActive : ''}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       <div className={styles.searchWrapper}>
         <input
           type="text"
@@ -251,7 +226,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
           {search ? `${filteredTokens.length} of ${total}` : total} {total === 1 ? 'token' : 'tokens'}
         </span>
         <div className={styles.buttons}>
-          {status === 'kept' && (
+          {initialStatus === 'kept' && (
             <button
               onClick={handleExportKept}
               disabled={tokens.length === 0}
@@ -294,7 +269,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
 
       {!isLoading && filteredTokens.length === 0 && !error && (
         <div className={styles.empty}>
-          {search ? `No tokens matching "${search}"` : `No ${status} tokens found`}
+          {search ? `No tokens matching "${search}"` : `No ${initialStatus} tokens found`}
         </div>
       )}
 
