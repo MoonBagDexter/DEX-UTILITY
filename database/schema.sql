@@ -28,7 +28,12 @@ CREATE TABLE IF NOT EXISTS tokens (
 
     -- Stats snapshot (Market Cap, Volume, etc.)
     -- Example: {"marketCap": 100000, "volume24h": 50000, "priceUsd": "0.001"}
-    stats JSONB DEFAULT '{}'::jsonb
+    stats JSONB DEFAULT '{}'::jsonb,
+
+    -- Auto-analysis results (from Claude AI)
+    -- Example: {"classification": "utility", "confidence": 85, "reasoning": "..."}
+    analysis JSONB,
+    analyzed_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Create indexes for common queries

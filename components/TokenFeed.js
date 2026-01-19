@@ -16,6 +16,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isRefreshingData, setIsRefreshingData] = useState(false);
 
   const LIMIT = 500; // Load all tokens at once
 
@@ -239,6 +240,38 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     }
   };
 
+  const handleRefreshData = async () => {
+    setIsRefreshingData(true);
+    setRefreshMessage(null);
+
+    try {
+      const res = await fetch('/api/refresh-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: initialStatus })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setRefreshMessage({ type: 'error', text: data.error });
+      } else {
+        setRefreshMessage({
+          type: 'success',
+          text: `Updated ${data.updated} of ${data.total} tokens with latest DexScreener data`
+        });
+        // Reload the token list to show updated data
+        if (data.updated > 0) {
+          fetchTokens(0, false);
+        }
+      }
+    } catch (err) {
+      setRefreshMessage({ type: 'error', text: err.message });
+    } finally {
+      setIsRefreshingData(false);
+      setTimeout(() => setRefreshMessage(null), 5000);
+    }
+  };
+
   return (
     <div className={styles.feed}>
       <div className={styles.searchWrapper}>
@@ -274,6 +307,13 @@ export default function TokenFeed({ initialStatus = 'new' }) {
               {isAnalyzing ? '🤖 Analyzing...' : '🤖 Auto-Analyze All'}
             </button>
           )}
+          <button
+            onClick={handleRefreshData}
+            disabled={isRefreshingData || tokens.length === 0}
+            className={`${styles.refreshDataBtn} ${isRefreshingData ? styles.refreshingData : ''}`}
+          >
+            {isRefreshingData ? '🔄 Updating...' : '🔄 Refresh Data'}
+          </button>
           <button
             onClick={handleFetchNew}
             disabled={isRefreshing}

@@ -124,6 +124,28 @@
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+.refreshDataBtn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  background: #3498db;
+  color: #fff;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.refreshDataBtn:hover:not(:disabled) {
+  background: #2980b9;
+}
+
+.refreshDataBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.refreshDataBtn.refreshingData {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
