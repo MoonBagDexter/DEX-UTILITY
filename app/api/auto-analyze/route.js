@@ -66,11 +66,7 @@ export async function POST(request) {
         // Update token status in database
         const { data: updateData, error: updateError } = await supabaseServer
           .from('tokens')
-          .update({
-            status: newStatus,
-            analysis: analysis,
-            analyzed_at: new Date().toISOString()
-          })
+          .update({ status: newStatus })
           .eq('ca', token.ca)
           .select('ca, status');
 
