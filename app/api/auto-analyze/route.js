@@ -64,17 +64,24 @@ export async function POST(request) {
         }
 
         // Update token status in database
-        const { error: updateError } = await supabaseServer
+        const { data: updateData, error: updateError } = await supabaseServer
           .from('tokens')
           .update({
             status: newStatus,
             analysis: analysis,
             analyzed_at: new Date().toISOString()
           })
-          .eq('ca', token.ca);
+          .eq('ca', token.ca)
+          .select('ca, status');
 
         if (updateError) {
+          console.error(`Update failed for ${token.ca}:`, updateError);
           results.errors.push({ ca: token.ca, error: updateError.message });
+        } else if (!updateData || updateData.length === 0) {
+          console.error(`Update returned no rows for ${token.ca}`);
+          results.errors.push({ ca: token.ca, error: 'No rows updated' });
+        } else {
+          console.log(`Updated ${token.ca} to ${newStatus}`);
         }
 
         results.processed++;
@@ -86,6 +93,14 @@ export async function POST(request) {
       // Small delay between API calls to be respectful of rate limits
       await new Promise(resolve => setTimeout(resolve, 100));
     }
+
+    console.log('Auto-analyze results:', {
+      total: newTokens.length,
+      kept: results.kept,
+      deleted: results.deleted,
+      skipped: results.skipped,
+      errors: results.errors
+    });
 
     return NextResponse.json({
       message: 'Auto-analysis complete',

@@ -1,4 +1,3 @@
-import { supabase } from '@/lib/supabase';
 import { supabaseServer } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
@@ -9,7 +8,7 @@ export async function GET(request) {
 
     // Query parameters
     const status = searchParams.get('status') || 'new';
-    const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 100);
+    const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 500);
     const offset = parseInt(searchParams.get('offset')) || 0;
     const sortBy = searchParams.get('sortBy') || 'created_at';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
@@ -19,8 +18,8 @@ export async function GET(request) {
     const safeSort = allowedSortColumns.includes(sortBy) ? sortBy : 'created_at';
     const safeOrder = sortOrder === 'asc';
 
-    // Build query
-    let query = supabase
+    // Build query - use server client to ensure consistent reads
+    let query = supabaseServer
       .from('tokens')
       .select('*', { count: 'exact' });
 

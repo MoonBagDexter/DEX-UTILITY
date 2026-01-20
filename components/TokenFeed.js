@@ -46,9 +46,10 @@ export default function TokenFeed({ initialStatus = 'new' }) {
         offset: newOffset.toString(),
         sortBy: 'pair_created_at',
         sortOrder: 'desc',
+        _t: Date.now().toString(), // Cache buster
       });
 
-      const res = await fetch(`/api/tokens?${params}`);
+      const res = await fetch(`/api/tokens?${params}`, { cache: 'no-store' });
       const data = await res.json();
 
       if (!res.ok) {
