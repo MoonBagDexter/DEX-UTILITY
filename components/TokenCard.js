@@ -215,20 +215,24 @@ export default function TokenCard({ token, onStatusChange }) {
           {isAnalyzing ? 'Analyzing...' : 'Analyze'}
         </button>
         <div className={styles.actionGroup}>
-          <button
-            onClick={() => handleStatusChange('kept')}
-            disabled={isUpdating}
-            className={styles.keepBtn}
-          >
-            Keep
-          </button>
-          <button
-            onClick={() => handleStatusChange('deleted')}
-            disabled={isUpdating}
-            className={styles.deleteBtn}
-          >
-            Delete
-          </button>
+          {token.status !== 'kept' && (
+            <button
+              onClick={() => handleStatusChange('kept')}
+              disabled={isUpdating}
+              className={styles.keepBtn}
+            >
+              Keep
+            </button>
+          )}
+          {token.status !== 'deleted' && (
+            <button
+              onClick={() => handleStatusChange('deleted')}
+              disabled={isUpdating}
+              className={styles.deleteBtn}
+            >
+              Delete
+            </button>
+          )}
         </div>
       </div>
 
