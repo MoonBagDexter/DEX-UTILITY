@@ -195,7 +195,7 @@ function extractDexId(url) {
   return match ? match[1] : null;
 }
 
-// Auto-analyze tokens and update their status
+// Auto-analyze tokens and update their status (parallel processing)
 async function autoAnalyzeTokens(tokens) {
   const results = {
     processed: 0,
@@ -205,45 +205,51 @@ async function autoAnalyzeTokens(tokens) {
     errors: []
   };
 
-  for (const token of tokens) {
-    try {
-      const analysis = await analyzeToken(token);
+  // Process 20 tokens at a time in parallel to fit within Vercel timeout
+  const batchSize = 20;
 
-      let newStatus = 'new';
+  for (let i = 0; i < tokens.length; i += batchSize) {
+    const batch = tokens.slice(i, i + batchSize);
 
-      if (analysis.classification === 'utility') {
-        newStatus = 'kept';
-        results.kept++;
-      } else if (analysis.classification === 'meme') {
-        newStatus = 'deleted';
-        results.deleted++;
-      } else {
-        results.skipped++;
-        results.processed++;
-        continue;
-      }
+    const batchResults = await Promise.all(
+      batch.map(async (token) => {
+        try {
+          const analysis = await analyzeToken(token);
 
-      const { error: updateError } = await supabaseServer
-        .from('tokens')
-        .update({
-          status: newStatus,
-          analysis: analysis,
-          analyzed_at: new Date().toISOString()
-        })
-        .eq('ca', token.ca);
+          if (analysis.classification !== 'utility' && analysis.classification !== 'meme') {
+            return { status: 'skipped' };
+          }
 
-      if (updateError) {
-        results.errors.push({ ca: token.ca, error: updateError.message });
-      }
+          const newStatus = analysis.classification === 'utility' ? 'kept' : 'deleted';
 
+          const { error: updateError } = await supabaseServer
+            .from('tokens')
+            .update({
+              status: newStatus,
+              analysis: analysis,
+              analyzed_at: new Date().toISOString()
+            })
+            .eq('ca', token.ca);
+
+          if (updateError) {
+            return { status: 'error', error: { ca: token.ca, msg: updateError.message } };
+          }
+
+          return { status: newStatus };
+        } catch (err) {
+          return { status: 'error', error: { ca: token.ca, msg: err.message } };
+        }
+      })
+    );
+
+    // Aggregate batch results
+    for (const r of batchResults) {
       results.processed++;
-    } catch (err) {
-      results.errors.push({ ca: token.ca, error: err.message });
-      results.processed++;
+      if (r.status === 'kept') results.kept++;
+      else if (r.status === 'deleted') results.deleted++;
+      else if (r.status === 'skipped') results.skipped++;
+      else if (r.error) results.errors.push(r.error);
     }
-
-    // Small delay between API calls
-    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
   return results;
