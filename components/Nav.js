@@ -2,12 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import styles from './Nav.module.css';
 
 export default function Nav() {
   const pathname = usePathname();
-  const router = useRouter();
   const [isRunning, setIsRunning] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -35,15 +34,9 @@ export default function Nav() {
       }
 
       const added = data.added || 0;
-      if (added === 0) {
-        setMessage({ type: 'success', text: data.message || 'No new tokens found' });
-        setIsRunning(false);
-        setTimeout(() => setMessage(null), 5000);
-        return;
-      }
 
       // Step 2: Auto-analyze all new tokens in batches
-      setMessage({ type: 'info', text: `Added ${added} tokens. Analyzing...` });
+      setMessage({ type: 'info', text: added > 0 ? `Added ${added} tokens. Analyzing...` : 'Analyzing tokens...' });
 
       let totalKept = 0, totalDeleted = 0, totalProcessed = 0;
 
@@ -65,17 +58,27 @@ export default function Nav() {
         });
       }
 
+      if (totalProcessed === 0 && added === 0) {
+        setMessage({ type: 'success', text: 'No new tokens to fetch or analyze' });
+        setIsRunning(false);
+        setTimeout(() => setMessage(null), 5000);
+        return;
+      }
+
+      const parts = [];
+      if (added > 0) parts.push(`fetched ${added}`);
+      if (totalProcessed > 0) parts.push(`analyzed ${totalProcessed} (${totalKept} kept, ${totalDeleted} deleted)`);
+
       setMessage({
         type: 'success',
-        text: `Done! Added ${added}, analyzed ${totalProcessed}: ${totalKept} kept, ${totalDeleted} deleted`
+        text: `Done! ${parts.join(', ')}`
       });
 
-      // Refresh the current page to show updated data
-      router.refresh();
+      // Reload the page to show updated data
+      setTimeout(() => window.location.reload(), 1500);
 
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
-    } finally {
       setIsRunning(false);
       setTimeout(() => setMessage(null), 8000);
     }
