@@ -8,12 +8,11 @@ const anthropic = new Anthropic({
 
 export async function POST(request) {
   try {
-    // Process only 5 tokens at a time to avoid Vercel timeout (10s hobby, 60s pro)
-    // User can click multiple times to process all tokens
+    // Process 20 tokens in parallel - fits within Vercel's 10s hobby timeout
     const body = await request.json().catch(() => ({}));
-    const limit = body.limit || 5;
+    const limit = body.limit || 20;
 
-    // Fetch all tokens with status='new'
+    // Fetch tokens with status='new'
     const { data: newTokens, error: fetchError } = await supabaseServer
       .from('tokens')
       .select('*')
@@ -27,75 +26,32 @@ export async function POST(request) {
     if (!newTokens || newTokens.length === 0) {
       return NextResponse.json({
         message: 'No new tokens to analyze',
-        processed: 0,
+        total: 0,
         kept: 0,
         deleted: 0,
         skipped: 0
       });
     }
 
-    const results = {
-      processed: 0,
-      kept: 0,
-      deleted: 0,
-      skipped: 0,
-      errors: []
-    };
+    // Process all tokens in parallel
+    const processResults = await Promise.all(
+      newTokens.map(token => processToken(token))
+    );
 
-    // Process tokens sequentially to avoid rate limits
-    for (const token of newTokens) {
-      try {
-        const analysis = await analyzeToken(token);
-
-        // Determine new status based on classification
-        let newStatus = 'new'; // default: keep for manual review
-
-        if (analysis.classification === 'utility') {
-          newStatus = 'kept';
-          results.kept++;
-        } else if (analysis.classification === 'meme') {
-          newStatus = 'deleted';
-          results.deleted++;
-        } else {
-          // unknown or low confidence - skip update
-          results.skipped++;
-          results.processed++;
-          continue;
-        }
-
-        // Update token status in database
-        const { data: updateData, error: updateError } = await supabaseServer
-          .from('tokens')
-          .update({ status: newStatus })
-          .eq('ca', token.ca)
-          .select('ca, status');
-
-        if (updateError) {
-          console.error(`Update failed for ${token.ca}:`, updateError);
-          results.errors.push({ ca: token.ca, error: updateError.message });
-        } else if (!updateData || updateData.length === 0) {
-          console.error(`Update returned no rows for ${token.ca}`);
-          results.errors.push({ ca: token.ca, error: 'No rows updated' });
-        } else {
-          console.log(`Updated ${token.ca} to ${newStatus}`);
-        }
-
-        results.processed++;
-      } catch (err) {
-        results.errors.push({ ca: token.ca, error: err.message });
-        results.processed++;
-      }
-
-      // Small delay between API calls to be respectful of rate limits
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+    // Aggregate results
+    const results = processResults.reduce(
+      (acc, r) => ({
+        kept: acc.kept + (r.status === 'kept' ? 1 : 0),
+        deleted: acc.deleted + (r.status === 'deleted' ? 1 : 0),
+        skipped: acc.skipped + (r.status === 'skipped' ? 1 : 0),
+        errors: r.error ? [...acc.errors, r.error] : acc.errors,
+      }),
+      { kept: 0, deleted: 0, skipped: 0, errors: [] }
+    );
 
     console.log('Auto-analyze results:', {
       total: newTokens.length,
-      kept: results.kept,
-      deleted: results.deleted,
-      skipped: results.skipped,
-      errors: results.errors
+      ...results
     });
 
     return NextResponse.json({
@@ -110,6 +66,34 @@ export async function POST(request) {
       { error: error.message },
       { status: 500 }
     );
+  }
+}
+
+async function processToken(token) {
+  try {
+    const analysis = await analyzeToken(token);
+
+    // Determine new status based on classification
+    if (analysis.classification !== 'utility' && analysis.classification !== 'meme') {
+      return { status: 'skipped' };
+    }
+
+    const newStatus = analysis.classification === 'utility' ? 'kept' : 'deleted';
+
+    // Update token status in database
+    const { data, error } = await supabaseServer
+      .from('tokens')
+      .update({ status: newStatus })
+      .eq('ca', token.ca)
+      .select('ca');
+
+    if (error || !data?.length) {
+      return { status: 'skipped', error: { ca: token.ca, msg: error?.message || 'No rows updated' } };
+    }
+
+    return { status: newStatus };
+  } catch (err) {
+    return { status: 'skipped', error: { ca: token.ca, msg: err.message } };
   }
 }
 
