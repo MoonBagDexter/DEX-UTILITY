@@ -196,32 +196,21 @@ export default function TokenFeed({ initialStatus = 'new' }) {
         </span>
         <div className={styles.buttons}>
           {initialStatus === 'kept' && (
-            <>
-              <button
-                onClick={handleExportKept}
-                disabled={tokens.length === 0}
-                className={styles.exportBtn}
-              >
-                Export
-              </button>
-              <button
-                onClick={() => fetchTokens(0, false)}
-                disabled={isLoading}
-                className={styles.refreshBtn}
-              >
-                {isLoading ? 'Loading...' : 'Refresh'}
-              </button>
-            </>
-          )}
-          {initialStatus === 'deleted' && (
             <button
-              onClick={() => fetchTokens(0, false)}
-              disabled={isLoading}
-              className={styles.refreshBtn}
+              onClick={handleExportKept}
+              disabled={tokens.length === 0}
+              className={styles.exportBtn}
             >
-              {isLoading ? 'Loading...' : 'Refresh'}
+              Export
             </button>
           )}
+          <button
+            onClick={() => fetchTokens(0, false)}
+            disabled={isLoading}
+            className={styles.refreshBtn}
+          >
+            {isLoading ? 'Loading...' : 'Refresh'}
+          </button>
         </div>
       </div>
 
