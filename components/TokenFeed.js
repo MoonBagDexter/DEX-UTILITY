@@ -13,10 +13,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshMessage, setRefreshMessage] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isRefreshingData, setIsRefreshingData] = useState(false);
+  const [message, setMessage] = useState(null);
 
   const LIMIT = 500; // Load all tokens at once
 
@@ -96,8 +93,8 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     const tokensToExport = search.trim() ? filteredTokens : tokens;
 
     if (tokensToExport.length === 0) {
-      setRefreshMessage({ type: 'error', text: 'No tokens to export' });
-      setTimeout(() => setRefreshMessage(null), 3000);
+      setMessage({ type: 'error', text: 'No tokens to export' });
+      setTimeout(() => setMessage(null), 3000);
       return;
     }
 
@@ -176,134 +173,8 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    setRefreshMessage({ type: 'success', text: `Exported ${tokensToExport.length} coins to ${filename}` });
-    setTimeout(() => setRefreshMessage(null), 5000);
-  };
-
-  const handleFetchNew = async () => {
-    setIsRefreshing(true);
-    setRefreshMessage(null);
-
-    try {
-      const res = await fetch('/api/refresh', { method: 'POST' });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setRefreshMessage({ type: 'error', text: data.error });
-        setIsRefreshing(false);
-        setTimeout(() => setRefreshMessage(null), 5000);
-        return;
-      }
-
-      const added = data.added || 0;
-      if (added === 0) {
-        setRefreshMessage({ type: 'success', text: data.message || 'No new tokens found' });
-        setIsRefreshing(false);
-        setTimeout(() => setRefreshMessage(null), 5000);
-        return;
-      }
-
-      // Tokens were added - now auto-analyze them in batches
-      setRefreshMessage({ type: 'success', text: `Added ${added} tokens. Analyzing...` });
-
-      let totalKept = 0, totalDeleted = 0, totalProcessed = 0;
-
-      // Keep analyzing until no more new tokens
-      while (true) {
-        const analyzeRes = await fetch('/api/auto-analyze', { method: 'POST' });
-        const analyzeData = await analyzeRes.json();
-
-        if (!analyzeRes.ok || !analyzeData.total || analyzeData.total === 0) {
-          break; // No more tokens to analyze
-        }
-
-        totalKept += analyzeData.kept || 0;
-        totalDeleted += analyzeData.deleted || 0;
-        totalProcessed += analyzeData.total || 0;
-
-        setRefreshMessage({
-          type: 'success',
-          text: `Analyzing... ${totalProcessed} done (${totalKept} kept, ${totalDeleted} deleted)`
-        });
-      }
-
-      setRefreshMessage({
-        type: 'success',
-        text: `Done! Added ${added}, analyzed ${totalProcessed}: ${totalKept} kept, ${totalDeleted} deleted`
-      });
-
-      // Reload the token list
-      fetchTokens(0, false);
-
-    } catch (err) {
-      setRefreshMessage({ type: 'error', text: err.message });
-    } finally {
-      setIsRefreshing(false);
-      setTimeout(() => setRefreshMessage(null), 8000);
-    }
-  };
-
-  const handleAutoAnalyze = async () => {
-    setIsAnalyzing(true);
-    setRefreshMessage(null);
-
-    try {
-      const res = await fetch('/api/auto-analyze', { method: 'POST' });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setRefreshMessage({ type: 'error', text: data.error });
-      } else {
-        const { kept = 0, deleted = 0, skipped = 0, total = 0 } = data;
-        const remaining = tokens.length - total;
-        const remainingMsg = remaining > 0 ? ` (${remaining} remaining - click again)` : '';
-        setRefreshMessage({
-          type: 'success',
-          text: `Analyzed ${total} tokens: ${kept} kept, ${deleted} deleted, ${skipped} skipped${remainingMsg}`
-        });
-        // Reload the token list to reflect changes
-        if (kept > 0 || deleted > 0) {
-          fetchTokens(0, false);
-        }
-      }
-    } catch (err) {
-      setRefreshMessage({ type: 'error', text: err.message });
-    } finally {
-      setIsAnalyzing(false);
-      setTimeout(() => setRefreshMessage(null), 5000);
-    }
-  };
-
-  const handleRefreshData = async () => {
-    setIsRefreshingData(true);
-    setRefreshMessage(null);
-
-    try {
-      const res = await fetch('/api/refresh-tokens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: initialStatus })
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setRefreshMessage({ type: 'error', text: data.error });
-      } else {
-        setRefreshMessage({
-          type: 'success',
-          text: `Updated ${data.updated} of ${data.total} tokens with latest DexScreener data`
-        });
-        // Reload the token list to show updated data
-        if (data.updated > 0) {
-          fetchTokens(0, false);
-        }
-      }
-    } catch (err) {
-      setRefreshMessage({ type: 'error', text: err.message });
-    } finally {
-      setIsRefreshingData(false);
-      setTimeout(() => setRefreshMessage(null), 5000);
-    }
+    setMessage({ type: 'success', text: `Exported ${tokensToExport.length} coins to ${filename}` });
+    setTimeout(() => setMessage(null), 5000);
   };
 
   return (
@@ -324,50 +195,38 @@ export default function TokenFeed({ initialStatus = 'new' }) {
         </span>
         <div className={styles.buttons}>
           {initialStatus === 'kept' && (
+            <>
+              <button
+                onClick={handleExportKept}
+                disabled={tokens.length === 0}
+                className={styles.exportBtn}
+              >
+                Export
+              </button>
+              <button
+                onClick={() => fetchTokens(0, false)}
+                disabled={isLoading}
+                className={styles.refreshBtn}
+              >
+                {isLoading ? 'Loading...' : 'Refresh'}
+              </button>
+            </>
+          )}
+          {initialStatus === 'deleted' && (
             <button
-              onClick={handleExportKept}
-              disabled={tokens.length === 0}
-              className={styles.exportBtn}
+              onClick={() => fetchTokens(0, false)}
+              disabled={isLoading}
+              className={styles.refreshBtn}
             >
-              Export Kept
+              {isLoading ? 'Loading...' : 'Refresh'}
             </button>
           )}
-          {initialStatus === 'new' && (
-            <button
-              onClick={handleAutoAnalyze}
-              disabled={isAnalyzing || tokens.length === 0}
-              className={`${styles.analyzeBtn} ${isAnalyzing ? styles.analyzing : ''}`}
-            >
-              {isAnalyzing ? '🤖 Analyzing...' : '🤖 Auto-Analyze All'}
-            </button>
-          )}
-          <button
-            onClick={handleRefreshData}
-            disabled={isRefreshingData || tokens.length === 0}
-            className={`${styles.refreshDataBtn} ${isRefreshingData ? styles.refreshingData : ''}`}
-          >
-            {isRefreshingData ? '🔄 Updating...' : '🔄 Refresh Data'}
-          </button>
-          <button
-            onClick={handleFetchNew}
-            disabled={isRefreshing}
-            className={`${styles.fetchBtn} ${isRefreshing ? styles.fetching : ''}`}
-          >
-            {isRefreshing ? '⏳ Fetching from DexScreener...' : '🔍 Fetch New'}
-          </button>
-          <button
-            onClick={() => fetchTokens(0, false)}
-            disabled={isLoading}
-            className={styles.refreshBtn}
-          >
-            {isLoading ? 'Loading...' : 'Refresh'}
-          </button>
         </div>
       </div>
 
-      {refreshMessage && (
-        <div className={`${styles.message} ${styles[refreshMessage.type]}`}>
-          {refreshMessage.type === 'success' ? '✅ ' : '❌ '}{refreshMessage.text}
+      {message && (
+        <div className={`${styles.message} ${styles[message.type]}`}>
+          {message.type === 'success' ? '✓ ' : '✗ '}{message.text}
         </div>
       )}
 
