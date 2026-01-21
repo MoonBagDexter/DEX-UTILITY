@@ -159,57 +159,48 @@ export async function GET(request) {
         const batch = tokensToAnalyze.slice(i, i + 10);
 
         const results = await Promise.all(
-          batch.map(async (token) => {
             try {
-              const analysis = await analyzeToken(token);
-              const newStatus = analysis.classification === 'utility' ? 'kept' : 'deleted';
+          const analysis = await analyzeToken(token);
+          const newStatus = analysis.classification === 'utility' ? 'kept' : 'deleted';
 
-              await supabaseServer
-                .from('tokens')
-                .update({
-                  status: newStatus,
-                  analysis: analysis,
-                  analyzed_at: new Date().toISOString()
-                })
-                .eq('ca', token.ca);
+          await supabaseServer
+            .from('tokens')
+            .update({ status: newStatus })
+            .eq('ca', token.ca);
 
-              return newStatus;
-            } catch (err) {
-              // On error, mark as deleted
-              await supabaseServer
-                .from('tokens')
-                .update({
-                  status: 'deleted',
-                  analysis: { classification: 'error', confidence: 0, reasoning: 'Analysis failed' },
-                  analyzed_at: new Date().toISOString()
-                })
-                .eq('ca', token.ca);
-              return 'deleted';
-            }
-          })
+          return newStatus;
+        } catch (err) {
+          // On error, mark as deleted
+          await supabaseServer
+            .from('tokens')
+            .update({ status: 'deleted' })
+            .eq('ca', token.ca);
+          return 'deleted';
+        }
+      })
         );
 
-        totalKept += results.filter(r => r === 'kept').length;
-        totalDeleted += results.filter(r => r === 'deleted').length;
-      }
+      totalKept += results.filter(r => r === 'kept').length;
+      totalDeleted += results.filter(r => r === 'deleted').length;
     }
+  }
 
     return NextResponse.json({
-      message: 'Tokens collected and analyzed',
-      added: newTokens.length,
-      analyzed: tokensToAnalyze.length,
-      kept: totalKept,
-      deleted: totalDeleted + autoDeleted,
-      alreadyExisted: solanaTokens.length - newSolanaTokens.length
-    });
+    message: 'Tokens collected and analyzed',
+    added: newTokens.length,
+    analyzed: tokensToAnalyze.length,
+    kept: totalKept,
+    deleted: totalDeleted + autoDeleted,
+    alreadyExisted: solanaTokens.length - newSolanaTokens.length
+  });
 
-  } catch (error) {
-    console.error('Cron job error:', error);
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
-    );
-  }
+} catch (error) {
+  console.error('Cron job error:', error);
+  return NextResponse.json(
+    { error: error.message },
+    { status: 500 }
+  );
+}
 }
 
 // Extract dex ID from DexScreener URL
