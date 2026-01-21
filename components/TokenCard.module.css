@@ -152,6 +152,12 @@
   cursor: not-allowed;
 }
 
+.refreshMessage {
+  font-size: var(--font-size-xs);
+  color: var(--foreground-muted);
+  font-style: italic;
+}
+
 .links {
   display: flex;
   flex-wrap: wrap;

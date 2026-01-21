@@ -10,6 +10,7 @@ export default function TokenCard({ token, onStatusChange }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isRefreshingStats, setIsRefreshingStats] = useState(false);
   const [localStats, setLocalStats] = useState(token.stats);
+  const [refreshMessage, setRefreshMessage] = useState(null);
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
@@ -50,6 +51,7 @@ export default function TokenCard({ token, onStatusChange }) {
 
   const handleRefreshStats = async () => {
     setIsRefreshingStats(true);
+    setRefreshMessage(null);
     try {
       const res = await fetch('/api/refresh-stats', {
         method: 'POST',
@@ -59,9 +61,15 @@ export default function TokenCard({ token, onStatusChange }) {
       const data = await res.json();
       if (res.ok && data.stats) {
         setLocalStats(data.stats);
+        setRefreshMessage(null);
+      } else if (data.message) {
+        setRefreshMessage(data.message);
+      } else if (data.error) {
+        setRefreshMessage(data.error);
       }
     } catch (error) {
       console.error('Stats refresh failed:', error);
+      setRefreshMessage('Network error');
     } finally {
       setIsRefreshingStats(false);
     }
@@ -177,6 +185,9 @@ export default function TokenCard({ token, onStatusChange }) {
           </button>
         )}
       </div>
+      {refreshMessage && (
+        <span className={styles.refreshMessage}>{refreshMessage}</span>
+      )}
 
       {token.links && token.links.length > 0 && (
         <div className={styles.links}>

@@ -72,7 +72,9 @@ export async function POST(request) {
       try {
         const statsRes = await fetch(`${DEXSCREENER_API}/tokens/v1/solana/${addresses}`);
         if (statsRes.ok) {
-          const pairs = await statsRes.json();
+          const data = await statsRes.json();
+          // Handle both response formats: array directly or { pairs: [...] }
+          const pairs = Array.isArray(data) ? data : (data.pairs || []);
           for (const pair of pairs) {
             if (!tokenStats.has(pair.baseToken.address)) {
               tokenStats.set(pair.baseToken.address, {
