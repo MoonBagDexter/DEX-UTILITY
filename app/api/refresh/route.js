@@ -2,6 +2,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
 
 const DEXSCREENER_API = 'https://api.dexscreener.com';
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
 
 // Simple in-memory rate limiting (resets on deploy)
 let lastRefreshTime = 0;
@@ -94,6 +95,7 @@ export async function POST(request) {
 
     // Prepare new tokens for insertion
     const newTokens = [];
+    const tokenDataList = [];
 
     for (const token of newSolanaTokens) {
       const links = [];
@@ -127,7 +129,7 @@ export async function POST(request) {
 
       const stats = tokenStats.get(token.tokenAddress) || {};
 
-      const tokenData = {
+      tokenDataList.push({
         ca: token.tokenAddress,
         name: stats.name || (token.description ? extractName(token.description) : 'Unknown'),
         ticker: stats.symbol || token.symbol || 'UNKNOWN',
@@ -142,12 +144,48 @@ export async function POST(request) {
           volume24h: stats.volume24h || null,
           liquidity: stats.liquidity || null
         }
-      };
+      });
+    }
 
+    // Fetch Helius metadata for tokens with missing data
+    const tokensNeedingHelius = tokenDataList.filter(
+      t => t.name === 'Unknown' || t.ticker === 'UNKNOWN'
+    );
+
+    if (tokensNeedingHelius.length > 0 && HELIUS_API_KEY) {
+      const heliusResults = await Promise.all(
+        tokensNeedingHelius.map(t => fetchHeliusMetadata(t.ca))
+      );
+
+      for (let i = 0; i < tokensNeedingHelius.length; i++) {
+        const helius = heliusResults[i];
+        if (!helius) continue;
+
+        const token = tokensNeedingHelius[i];
+
+        if (token.name === 'Unknown' && helius.name) {
+          token.name = helius.name;
+        }
+        if (token.ticker === 'UNKNOWN' && helius.symbol) {
+          token.ticker = helius.symbol;
+        }
+        if (!token.description && helius.description) {
+          token.description = helius.description;
+        }
+        if (!token.image_url && helius.image) {
+          token.image_url = helius.image;
+        }
+        if (helius.externalUrl && !token.links.some(l => l.type === 'website')) {
+          token.links.push({ type: 'website', url: helius.externalUrl });
+        }
+      }
+    }
+
+    // Set status for all tokens
+    for (const tokenData of tokenDataList) {
       // Only keep tokens from allowed DEXes (bags, pump, bonk)
       // Everything else goes straight to deleted
       tokenData.status = isAllowedDex(tokenData) ? 'new' : 'deleted';
-
       newTokens.push(tokenData);
     }
 
@@ -184,6 +222,45 @@ function extractName(description) {
   const firstLine = description.split('\n')[0];
   const firstSentence = firstLine.split('.')[0];
   return firstSentence.slice(0, 100) || 'Unknown';
+}
+
+// Fetch token metadata from Helius as fallback
+async function fetchHeliusMetadata(tokenAddress) {
+  if (!HELIUS_API_KEY) return null;
+
+  try {
+    const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: '1',
+        method: 'getAsset',
+        params: { id: tokenAddress }
+      })
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    const result = data.result;
+
+    if (!result) return null;
+
+    const metadata = result.content?.metadata || {};
+    const links = result.content?.links || {};
+
+    return {
+      name: metadata.name || null,
+      symbol: metadata.symbol || null,
+      description: metadata.description || null,
+      image: links.image || result.content?.files?.[0]?.uri || null,
+      externalUrl: links.external_url || null
+    };
+  } catch (e) {
+    console.warn('Helius API error:', e.message);
+    return null;
+  }
 }
 
 // Check if token is from allowed DEXes (bags, pump, bonk)
