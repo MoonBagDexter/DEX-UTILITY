@@ -146,27 +146,60 @@ export async function GET(request) {
       throw new Error(`Supabase insert error: ${error.message}`);
     }
 
-    // Fire-and-forget: trigger analysis without blocking
+    // Analyze all new tokens in batches
     const autoDeleted = newTokens.length - tokensToAnalyze.length;
+    let totalKept = 0;
+    let totalDeleted = 0;
 
     if (tokensToAnalyze.length > 0) {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : 'http://localhost:3000');
+      const { analyzeToken } = await import('@/lib/analysis');
 
-      // Don't await - let it run independently
-      fetch(`${baseUrl}/api/auto-analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: 20 })
-      }).catch(err => console.error('Auto-analyze trigger failed:', err.message));
+      // Process in batches of 10
+      for (let i = 0; i < tokensToAnalyze.length; i += 10) {
+        const batch = tokensToAnalyze.slice(i, i + 10);
+
+        const results = await Promise.all(
+          batch.map(async (token) => {
+            try {
+              const analysis = await analyzeToken(token);
+              const newStatus = analysis.classification === 'utility' ? 'kept' : 'deleted';
+
+              await supabaseServer
+                .from('tokens')
+                .update({
+                  status: newStatus,
+                  analysis: analysis,
+                  analyzed_at: new Date().toISOString()
+                })
+                .eq('ca', token.ca);
+
+              return newStatus;
+            } catch (err) {
+              // On error, mark as deleted
+              await supabaseServer
+                .from('tokens')
+                .update({
+                  status: 'deleted',
+                  analysis: { classification: 'error', confidence: 0, reasoning: 'Analysis failed' },
+                  analyzed_at: new Date().toISOString()
+                })
+                .eq('ca', token.ca);
+              return 'deleted';
+            }
+          })
+        );
+
+        totalKept += results.filter(r => r === 'kept').length;
+        totalDeleted += results.filter(r => r === 'deleted').length;
+      }
     }
 
     return NextResponse.json({
-      message: 'Tokens collected, analysis triggered',
+      message: 'Tokens collected and analyzed',
       added: newTokens.length,
-      allowedDex: tokensToAnalyze.length,
-      autoDeleted: autoDeleted,
+      analyzed: tokensToAnalyze.length,
+      kept: totalKept,
+      deleted: totalDeleted + autoDeleted,
       alreadyExisted: solanaTokens.length - newSolanaTokens.length
     });
 
