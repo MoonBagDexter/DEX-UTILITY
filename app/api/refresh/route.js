@@ -127,7 +127,7 @@ export async function POST(request) {
 
       const stats = tokenStats.get(token.tokenAddress) || {};
 
-      newTokens.push({
+      const tokenData = {
         ca: token.tokenAddress,
         name: stats.name || (token.description ? extractName(token.description) : 'Unknown'),
         ticker: stats.symbol || token.symbol || 'UNKNOWN',
@@ -136,14 +136,19 @@ export async function POST(request) {
         links: links,
         dex_id: stats.dexId || null,
         pair_created_at: stats.pairCreatedAt ? new Date(stats.pairCreatedAt).toISOString() : null,
-        status: 'new',
         stats: {
           priceUsd: stats.priceUsd || null,
           marketCap: stats.marketCap || null,
           volume24h: stats.volume24h || null,
           liquidity: stats.liquidity || null
         }
-      });
+      };
+
+      // Only keep tokens from allowed DEXes (bags, pump, bonk)
+      // Everything else goes straight to deleted
+      tokenData.status = isAllowedDex(tokenData) ? 'new' : 'deleted';
+
+      newTokens.push(tokenData);
     }
 
     // Insert new tokens
@@ -155,9 +160,14 @@ export async function POST(request) {
       throw new Error(`Database error: ${error.message}`);
     }
 
+    const allowedCount = newTokens.filter(t => t.status === 'new').length;
+    const autoDeleted = newTokens.length - allowedCount;
+
     return NextResponse.json({
       message: 'Tokens refreshed successfully',
-      added: newTokens.length
+      added: newTokens.length,
+      allowedDex: allowedCount,
+      autoDeleted: autoDeleted
     });
 
   } catch (error) {
@@ -174,4 +184,30 @@ function extractName(description) {
   const firstLine = description.split('\n')[0];
   const firstSentence = firstLine.split('.')[0];
   return firstSentence.slice(0, 100) || 'Unknown';
+}
+
+// Check if token is from allowed DEXes (bags, pump, bonk)
+function isAllowedDex(token) {
+  const dexId = token.dex_id?.toLowerCase();
+  const ca = token.ca?.toLowerCase();
+  const links = token.links || [];
+
+  // Check DEX ID
+  if (dexId) {
+    // Pump.fun
+    if (dexId === 'pumpfun' || dexId === 'pump') return true;
+    // Bags
+    if (dexId === 'bags' || dexId === 'letsbag') return true;
+    // Bonk
+    if (dexId === 'launchlab' || dexId === 'bonk' || dexId === 'bonkfun' || dexId === 'letsbonk') return true;
+  }
+
+  // Check CA suffix
+  if (ca?.endsWith('pump')) return true;
+  if (ca?.endsWith('bags')) return true;
+
+  // Check links for bags.fm
+  if (links.some(link => link.url?.toLowerCase().includes('bags.fm'))) return true;
+
+  return false;
 }

@@ -94,6 +94,7 @@ export async function GET(request) {
 
     // Prepare new tokens for insertion
     const newTokens = [];
+    const tokensToAnalyze = [];
 
     for (const token of newSolanaTokens) {
       // Build links array from available social links
@@ -133,7 +134,7 @@ export async function GET(request) {
 
       const stats = tokenStats.get(token.tokenAddress) || {};
 
-      newTokens.push({
+      const tokenData = {
         ca: token.tokenAddress,
         name: stats.name || (token.description ? extractName(token.description) : 'Unknown'),
         ticker: stats.symbol || token.symbol || 'UNKNOWN',
@@ -142,14 +143,24 @@ export async function GET(request) {
         links: links,
         dex_id: stats.dexId || (token.url ? extractDexId(token.url) : null),
         pair_created_at: stats.pairCreatedAt ? new Date(stats.pairCreatedAt).toISOString() : null,
-        status: 'new',
         stats: {
           priceUsd: stats.priceUsd || null,
           marketCap: stats.marketCap || null,
           volume24h: stats.volume24h || null,
           liquidity: stats.liquidity || null
         }
-      });
+      };
+
+      // Only keep tokens from allowed DEXes (bags, pump, bonk)
+      // Everything else goes straight to deleted
+      if (isAllowedDex(tokenData)) {
+        tokenData.status = 'new';
+        tokensToAnalyze.push(tokenData);
+      } else {
+        tokenData.status = 'deleted';
+      }
+
+      newTokens.push(tokenData);
     }
 
     // Insert new tokens
@@ -161,12 +172,15 @@ export async function GET(request) {
       throw new Error(`Supabase insert error: ${error.message}`);
     }
 
-    // Auto-analyze the newly inserted tokens
-    const analysisResults = await autoAnalyzeTokens(newTokens);
+    // Only analyze tokens from allowed DEXes
+    const analysisResults = await autoAnalyzeTokens(tokensToAnalyze);
+    const autoDeleted = newTokens.length - tokensToAnalyze.length;
 
     return NextResponse.json({
       message: 'Tokens collected and analyzed successfully',
       added: newTokens.length,
+      allowedDex: tokensToAnalyze.length,
+      autoDeleted: autoDeleted,
       alreadyExisted: solanaTokens.length - newSolanaTokens.length,
       analysis: analysisResults
     });
@@ -193,6 +207,32 @@ function extractDexId(url) {
   if (!url) return null;
   const match = url.match(/dexscreener\.com\/\w+\/(\w+)/);
   return match ? match[1] : null;
+}
+
+// Check if token is from allowed DEXes (bags, pump, bonk)
+function isAllowedDex(token) {
+  const dexId = token.dex_id?.toLowerCase();
+  const ca = token.ca?.toLowerCase();
+  const links = token.links || [];
+
+  // Check DEX ID
+  if (dexId) {
+    // Pump.fun
+    if (dexId === 'pumpfun' || dexId === 'pump') return true;
+    // Bags
+    if (dexId === 'bags' || dexId === 'letsbag') return true;
+    // Bonk
+    if (dexId === 'launchlab' || dexId === 'bonk' || dexId === 'bonkfun' || dexId === 'letsbonk') return true;
+  }
+
+  // Check CA suffix
+  if (ca?.endsWith('pump')) return true;
+  if (ca?.endsWith('bags')) return true;
+
+  // Check links for bags.fm
+  if (links.some(link => link.url?.toLowerCase().includes('bags.fm'))) return true;
+
+  return false;
 }
 
 // Auto-analyze tokens and update their status (parallel processing)
