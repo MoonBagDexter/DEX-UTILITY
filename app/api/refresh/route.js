@@ -1,12 +1,12 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
-
-const DEXSCREENER_API = 'https://api.dexscreener.com';
-const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+import { DEXSCREENER_API, RATE_LIMIT_MS } from '@/lib/constants';
+import { fetchBatchTokenStats, extractLinks, extractName } from '@/lib/dexscreener';
+import { fetchHeliusMetadata } from '@/lib/helius';
+import { isAllowedDex } from '@/lib/dex';
 
 // Simple in-memory rate limiting (resets on deploy)
 let lastRefreshTime = 0;
-const RATE_LIMIT_MS = 60000; // 1 minute between refreshes
 
 export async function POST(request) {
   // Rate limiting
@@ -61,74 +61,16 @@ export async function POST(request) {
       });
     }
 
-    // Fetch market stats for new tokens (batch in groups of 30)
-    const tokenStats = new Map();
-    const batchSize = 30;
-
-    for (let i = 0; i < newSolanaTokens.length; i += batchSize) {
-      const batch = newSolanaTokens.slice(i, i + batchSize);
-      const addresses = batch.map(t => t.tokenAddress).join(',');
-
-      try {
-        const statsRes = await fetch(`${DEXSCREENER_API}/tokens/v1/solana/${addresses}`);
-        if (statsRes.ok) {
-          const data = await statsRes.json();
-          // Handle both response formats: array directly or { pairs: [...] }
-          const pairs = Array.isArray(data) ? data : (data.pairs || []);
-          for (const pair of pairs) {
-            if (!tokenStats.has(pair.baseToken.address)) {
-              tokenStats.set(pair.baseToken.address, {
-                priceUsd: pair.priceUsd,
-                marketCap: pair.marketCap || pair.fdv,
-                volume24h: pair.volume?.h24,
-                liquidity: pair.liquidity?.usd,
-                pairCreatedAt: pair.pairCreatedAt,
-                dexId: pair.dexId,
-                name: pair.baseToken.name,
-                symbol: pair.baseToken.symbol
-              });
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to fetch stats for batch:', e.message);
-      }
-    }
+    // Fetch market stats for new tokens
+    const addresses = newSolanaTokens.map(t => t.tokenAddress);
+    const tokenStats = await fetchBatchTokenStats(addresses);
 
     // Prepare new tokens for insertion
     const newTokens = [];
     const tokenDataList = [];
 
     for (const token of newSolanaTokens) {
-      const links = [];
-
-      if (token.website) {
-        links.push({ type: 'website', url: token.website });
-      }
-      if (token.websites && Array.isArray(token.websites)) {
-        for (const site of token.websites) {
-          links.push({ type: 'website', url: typeof site === 'string' ? site : site.url });
-        }
-      }
-      if (token.links) {
-        for (const link of token.links) {
-          if (link.type && link.url) {
-            links.push({ type: link.type, url: link.url });
-          } else if (link.label && link.url) {
-            links.push({ type: link.label, url: link.url });
-          } else if (typeof link === 'string') {
-            links.push({ type: 'link', url: link });
-          }
-        }
-      }
-      if (token.socials) {
-        for (const social of token.socials) {
-          if (social.type && social.url) {
-            links.push({ type: social.type, url: social.url });
-          }
-        }
-      }
-
+      const links = extractLinks(token);
       const stats = tokenStats.get(token.tokenAddress) || {};
 
       tokenDataList.push({
@@ -154,7 +96,7 @@ export async function POST(request) {
       t => t.name === 'Unknown' || t.ticker === 'UNKNOWN'
     );
 
-    if (tokensNeedingHelius.length > 0 && HELIUS_API_KEY) {
+    if (tokensNeedingHelius.length > 0 && process.env.HELIUS_API_KEY) {
       const heliusResults = await Promise.all(
         tokensNeedingHelius.map(t => fetchHeliusMetadata(t.ca))
       );
@@ -217,76 +159,4 @@ export async function POST(request) {
       { status: 500 }
     );
   }
-}
-
-function extractName(description) {
-  if (!description) return 'Unknown';
-  const firstLine = description.split('\n')[0];
-  const firstSentence = firstLine.split('.')[0];
-  return firstSentence.slice(0, 100) || 'Unknown';
-}
-
-// Fetch token metadata from Helius as fallback
-async function fetchHeliusMetadata(tokenAddress) {
-  if (!HELIUS_API_KEY) return null;
-
-  try {
-    const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        id: '1',
-        method: 'getAsset',
-        params: { id: tokenAddress }
-      })
-    });
-
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    const result = data.result;
-
-    if (!result) return null;
-
-    const metadata = result.content?.metadata || {};
-    const links = result.content?.links || {};
-
-    return {
-      name: metadata.name || null,
-      symbol: metadata.symbol || null,
-      description: metadata.description || null,
-      image: links.image || result.content?.files?.[0]?.uri || null,
-      externalUrl: links.external_url || null
-    };
-  } catch (e) {
-    console.warn('Helius API error:', e.message);
-    return null;
-  }
-}
-
-// Check if token is from allowed DEXes (bags, pump, bonk)
-function isAllowedDex(token) {
-  const dexId = token.dex_id?.toLowerCase();
-  const ca = token.ca?.toLowerCase();
-  const links = token.links || [];
-
-  // Check DEX ID
-  if (dexId) {
-    // Pump.fun
-    if (dexId === 'pumpfun' || dexId === 'pump') return true;
-    // Bags
-    if (dexId === 'bags' || dexId === 'letsbag') return true;
-    // Bonk
-    if (dexId === 'launchlab' || dexId === 'bonk' || dexId === 'bonkfun' || dexId === 'letsbonk') return true;
-  }
-
-  // Check CA suffix
-  if (ca?.endsWith('pump')) return true;
-  if (ca?.endsWith('bags')) return true;
-
-  // Check links for bags.fm
-  if (links.some(link => link.url?.toLowerCase().includes('bags.fm'))) return true;
-
-  return false;
 }

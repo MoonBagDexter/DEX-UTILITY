@@ -1,10 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { supabaseServer } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+import { analyzeToken } from '@/lib/analysis';
 
 export async function POST(request) {
   try {
@@ -49,11 +45,6 @@ export async function POST(request) {
       { kept: 0, deleted: 0, skipped: 0, errors: [] }
     );
 
-    console.log('Auto-analyze results:', {
-      total: newTokens.length,
-      ...results
-    });
-
     return NextResponse.json({
       message: 'Auto-analysis complete',
       total: newTokens.length,
@@ -70,109 +61,33 @@ export async function POST(request) {
 }
 
 async function processToken(token) {
+  let analysis = null;
+  let newStatus = 'deleted'; // Default to deleted if anything fails
+
   try {
-    const analysis = await analyzeToken(token);
+    analysis = await analyzeToken(token);
+    // utility -> kept, everything else -> deleted
+    newStatus = analysis.classification === 'utility' ? 'kept' : 'deleted';
+  } catch (err) {
+    // AI failed - mark as deleted with error info
+    analysis = { classification: 'error', confidence: 0, reasoning: err.message };
+  }
 
-    // Determine new status based on classification
-    if (analysis.classification !== 'utility' && analysis.classification !== 'meme') {
-      return { status: 'skipped' };
-    }
-
-    const newStatus = analysis.classification === 'utility' ? 'kept' : 'deleted';
-
-    // Update token status in database
-    const { data, error } = await supabaseServer
+  // Always update the token status - never leave it as 'new'
+  try {
+    const { error } = await supabaseServer
       .from('tokens')
       .update({ status: newStatus })
-      .eq('ca', token.ca)
-      .select('ca');
+      .eq('ca', token.ca);
 
-    if (error || !data?.length) {
-      return { status: 'skipped', error: { ca: token.ca, msg: error?.message || 'No rows updated' } };
+    if (error) {
+      console.error(`Failed to update token ${token.ca}:`, error.message);
     }
-
-    return { status: newStatus };
-  } catch (err) {
-    return { status: 'skipped', error: { ca: token.ca, msg: err.message } };
-  }
-}
-
-async function analyzeToken(token) {
-  const tokenContext = buildTokenContext(token);
-
-  const message = await anthropic.messages.create({
-    model: 'claude-3-5-haiku-20241022',
-    max_tokens: 256,
-    messages: [
-      {
-        role: 'user',
-        content: `Is this a MEME coin or does it have real UTILITY? Analyze:
-
-${tokenContext}
-
-Reply with JSON only:
-{"classification":"utility" or "meme","confidence":0-100,"reasoning":"1 sentence"}`
-      }
-    ]
-  });
-
-  const responseText = message.content[0].text;
-
-  try {
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    return jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(responseText);
-  } catch {
-    return {
-      classification: 'unknown',
-      confidence: 0,
-      reasoning: 'Failed to parse AI response'
-    };
-  }
-}
-
-function buildTokenContext(token) {
-  const parts = [];
-
-  parts.push(`Token Name: ${token.name || 'Unknown'}`);
-  parts.push(`Ticker: ${token.ticker || 'Unknown'}`);
-
-  if (token.description) {
-    parts.push(`Description: ${token.description}`);
+  } catch (dbErr) {
+    console.error(`DB error for token ${token.ca}:`, dbErr.message);
   }
 
-  if (token.links && token.links.length > 0) {
-    const linkTypes = token.links.map(l => l.type).join(', ');
-    parts.push(`Social Links: ${linkTypes}`);
-
-    const website = token.links.find(l => l.type === 'website');
-    if (website) {
-      parts.push(`Website: ${website.url}`);
-    }
-  }
-
-  if (token.stats) {
-    if (token.stats.marketCap) {
-      parts.push(`Market Cap: $${formatNumber(token.stats.marketCap)}`);
-    }
-    if (token.stats.liquidity) {
-      parts.push(`Liquidity: $${formatNumber(token.stats.liquidity)}`);
-    }
-    if (token.stats.volume24h) {
-      parts.push(`24h Volume: $${formatNumber(token.stats.volume24h)}`);
-    }
-  }
-
-  return parts.join('\n');
-}
-
-function formatNumber(num) {
-  if (num >= 1_000_000) {
-    return (num / 1_000_000).toFixed(2) + 'M';
-  }
-  if (num >= 1_000) {
-    return (num / 1_000).toFixed(2) + 'K';
-  }
-  return num.toFixed(2);
+  return { status: newStatus };
 }
 
 export async function GET(request) {

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import styles from './TokenCard.module.css';
+import { getDexType } from '@/lib/dex';
+import { formatAge } from '@/lib/format';
 
 export default function TokenCard({ token, onStatusChange }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -75,7 +77,8 @@ export default function TokenCard({ token, onStatusChange }) {
     }
   };
 
-  const hasMissingStats = !localStats?.marketCap && !localStats?.volume24h;
+  // Show refresh button if EITHER marketCap OR volume24h is missing
+  const hasMissingStats = !localStats?.marketCap || !localStats?.volume24h;
 
   const formatNumber = (num) => {
     if (!num) return '-';
@@ -84,44 +87,7 @@ export default function TokenCard({ token, onStatusChange }) {
     return `$${num.toFixed(2)}`;
   };
 
-  const formatAge = (dateStr) => {
-    if (!dateStr) return '-';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const minutes = Math.floor(diff / (1000 * 60));
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  };
-
-  const getDexType = () => {
-    const dexId = token.dex_id?.toLowerCase();
-
-    if (dexId === 'pumpfun' || dexId === 'pump') return 'pumpfun';
-    if (dexId === 'bags' || dexId === 'letsbag') return 'bags';
-    if (dexId === 'launchlab' || dexId === 'bonk' || dexId === 'bonkfun' || dexId === 'letsbonk') return 'bonk';
-
-    // Fallback: check CA suffix
-    const ca = token.ca?.toLowerCase();
-    if (ca?.endsWith('pump')) return 'pumpfun';
-    if (ca?.endsWith('bags')) return 'bags';
-    if (ca?.endsWith('bonk')) return 'bonk';
-
-    // Fallback: check links
-    if (token.links?.some(link =>
-      link.url?.toLowerCase().includes('bags.fm')
-    )) return 'bags';
-
-    if (token.links?.some(link =>
-      link.url?.toLowerCase().includes('bonk.fun') ||
-      link.url?.toLowerCase().includes('letsbonk')
-    )) return 'bonk';
-
-    return null; // No badge (Raydium/unknown)
-  };
-
-  const dexType = getDexType();
+  const dexType = getDexType(token);
 
   return (
     <div className={styles.card}>
@@ -214,7 +180,7 @@ export default function TokenCard({ token, onStatusChange }) {
 
             return (
               <a
-                key={i}
+                key={`${link.url}-${i}`}
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"

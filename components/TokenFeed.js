@@ -10,8 +10,6 @@ export default function TokenFeed({ initialStatus = 'new' }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState(null);
 
@@ -35,7 +33,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
            links.includes(query);
   });
 
-  const fetchTokens = useCallback(async (newOffset = 0, append = false) => {
+  const fetchTokens = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -43,7 +41,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
       const params = new URLSearchParams({
         status: initialStatus,
         limit: LIMIT.toString(),
-        offset: newOffset.toString(),
+        offset: '0',
         sortBy: 'created_at',
         sortOrder: 'desc',
         _t: Date.now().toString(), // Cache buster
@@ -56,15 +54,8 @@ export default function TokenFeed({ initialStatus = 'new' }) {
         throw new Error(data.error || 'Failed to fetch tokens');
       }
 
-      if (append) {
-        setTokens(prev => [...prev, ...data.tokens]);
-      } else {
-        setTokens(data.tokens);
-      }
-
+      setTokens(data.tokens);
       setTotal(data.total);
-      setHasMore(data.hasMore);
-      setOffset(newOffset);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -73,7 +64,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
   }, [initialStatus]);
 
   useEffect(() => {
-    fetchTokens(0, false);
+    fetchTokens();
   }, [fetchTokens]);
 
   const handleStatusChange = (ca, newStatus) => {
@@ -81,13 +72,6 @@ export default function TokenFeed({ initialStatus = 'new' }) {
     setTokens(prev => prev.filter(t => t.ca !== ca));
     setTotal(prev => prev - 1);
   };
-
-  const handleLoadMore = () => {
-    if (!isLoading && hasMore) {
-      fetchTokens(offset + LIMIT, true);
-    }
-  };
-
 
   const handleExportKept = () => {
     // Get tokens to export (use filtered if search is active, otherwise all)
@@ -205,7 +189,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
             </button>
           )}
           <button
-            onClick={() => fetchTokens(0, false)}
+            onClick={() => fetchTokens()}
             disabled={isLoading}
             className={styles.refreshBtn}
           >
@@ -223,7 +207,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
       {error && (
         <div className={styles.error}>
           {error}
-          <button onClick={() => fetchTokens(0, false)} className={styles.retryBtn}>
+          <button onClick={() => fetchTokens()} className={styles.retryBtn}>
             Retry
           </button>
         </div>
