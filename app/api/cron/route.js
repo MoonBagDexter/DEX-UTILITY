@@ -70,7 +70,8 @@ export async function GET(request) {
       try {
         const statsRes = await fetch(`${DEXSCREENER_API}/tokens/v1/solana/${addresses}`);
         if (statsRes.ok) {
-          const pairs = await statsRes.json();
+          const data = await statsRes.json();
+          const pairs = data.pairs || [];
           // Group by token address, take the first pair (usually highest liquidity)
           for (const pair of pairs) {
             if (!tokenStats.has(pair.baseToken.address)) {
