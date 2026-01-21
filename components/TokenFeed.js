@@ -44,7 +44,7 @@ export default function TokenFeed({ initialStatus = 'new' }) {
         status: initialStatus,
         limit: LIMIT.toString(),
         offset: newOffset.toString(),
-        sortBy: 'pair_created_at',
+        sortBy: 'created_at',
         sortOrder: 'desc',
         _t: Date.now().toString(), // Cache buster
       });
