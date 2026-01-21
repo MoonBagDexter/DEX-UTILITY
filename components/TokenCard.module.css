@@ -130,6 +130,28 @@
   font-weight: 500;
 }
 
+.refreshStatsBtn {
+  margin-left: auto;
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  background: var(--background-secondary);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-sm);
+  color: var(--foreground-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.refreshStatsBtn:hover:not(:disabled) {
+  background: var(--card-border);
+  color: var(--foreground);
+}
+
+.refreshStatsBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .links {
   display: flex;
   flex-wrap: wrap;

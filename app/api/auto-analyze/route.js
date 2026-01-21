@@ -174,3 +174,18 @@ function formatNumber(num) {
   }
   return num.toFixed(2);
 }
+
+export async function GET(request) {
+  const authHeader = request.headers.get('authorization');
+  const expectedAuth = `Bearer ${process.env.CRON_SECRET}`;
+
+  if (process.env.CRON_SECRET && authHeader !== expectedAuth) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Reuse POST logic
+  return POST(new Request(request.url, {
+    method: 'POST',
+    body: JSON.stringify({ limit: 20 })
+  }));
+}

@@ -8,6 +8,8 @@ export default function TokenCard({ token, onStatusChange }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isRefreshingStats, setIsRefreshingStats] = useState(false);
+  const [localStats, setLocalStats] = useState(token.stats);
 
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
@@ -45,6 +47,27 @@ export default function TokenCard({ token, onStatusChange }) {
       setIsUpdating(false);
     }
   };
+
+  const handleRefreshStats = async () => {
+    setIsRefreshingStats(true);
+    try {
+      const res = await fetch('/api/refresh-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ca: token.ca }),
+      });
+      const data = await res.json();
+      if (res.ok && data.stats) {
+        setLocalStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Stats refresh failed:', error);
+    } finally {
+      setIsRefreshingStats(false);
+    }
+  };
+
+  const hasMissingStats = !localStats?.marketCap && !localStats?.volume24h;
 
   const formatNumber = (num) => {
     if (!num) return '-';
@@ -124,7 +147,7 @@ export default function TokenCard({ token, onStatusChange }) {
           <h3 className={styles.name}>{token.name || 'Unknown'}</h3>
           <span className={styles.ticker}>${token.ticker || 'UNKNOWN'}</span>
         </div>
-        <span className={styles.age}>{formatAge(token.pair_created_at)}</span>
+        <span className={styles.age}>{formatAge(token.pair_created_at || token.created_at)}</span>
       </div>
 
       <p className={styles.description}>
@@ -135,15 +158,24 @@ export default function TokenCard({ token, onStatusChange }) {
         <div className={styles.stat}>
           <span className={styles.statLabel}>MCap</span>
           <span className={styles.statValue}>
-            {formatNumber(token.stats?.marketCap)}
+            {formatNumber(localStats?.marketCap)}
           </span>
         </div>
         <div className={styles.stat}>
           <span className={styles.statLabel}>Vol 24h</span>
           <span className={styles.statValue}>
-            {formatNumber(token.stats?.volume24h)}
+            {formatNumber(localStats?.volume24h)}
           </span>
         </div>
+        {hasMissingStats && (
+          <button
+            onClick={handleRefreshStats}
+            disabled={isRefreshingStats}
+            className={styles.refreshStatsBtn}
+          >
+            {isRefreshingStats ? '...' : 'Refresh'}
+          </button>
+        )}
       </div>
 
       {token.links && token.links.length > 0 && (

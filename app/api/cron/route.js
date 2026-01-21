@@ -215,17 +215,28 @@ export async function GET(request) {
       throw new Error(`Supabase insert error: ${error.message}`);
     }
 
-    // Only analyze tokens from allowed DEXes
-    const analysisResults = await autoAnalyzeTokens(tokensToAnalyze);
+    // Fire-and-forget: trigger analysis without blocking
     const autoDeleted = newTokens.length - tokensToAnalyze.length;
 
+    if (tokensToAnalyze.length > 0) {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : 'http://localhost:3000');
+
+      // Don't await - let it run independently
+      fetch(`${baseUrl}/api/auto-analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 20 })
+      }).catch(err => console.warn('Auto-analyze trigger failed:', err.message));
+    }
+
     return NextResponse.json({
-      message: 'Tokens collected and analyzed successfully',
+      message: 'Tokens collected, analysis triggered',
       added: newTokens.length,
       allowedDex: tokensToAnalyze.length,
       autoDeleted: autoDeleted,
-      alreadyExisted: solanaTokens.length - newSolanaTokens.length,
-      analysis: analysisResults
+      alreadyExisted: solanaTokens.length - newSolanaTokens.length
     });
 
   } catch (error) {
